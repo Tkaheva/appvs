@@ -1,0 +1,159 @@
+﻿{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .dashboard-card {
+        background: rgba(19, 38, 52, 0.9);
+        border-radius: 25px;
+        padding: 25px;
+        text-align: center;
+        border: 1px solid rgba(255, 152, 0, 0.3);
+        transition: transform 0.3s;
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .dashboard-icon {
+        font-size: 3rem;
+        margin-bottom: 15px;
+    }
+    
+    .dashboard-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #ff9800;
+    }
+    
+    .dashboard-label {
+        color: #b0c7e0;
+        margin-top: 10px;
+    }
+    
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-top: 30px;
+    }
+    
+    .action-btn {
+        background: linear-gradient(95deg, #ff9800, #f4511e);
+        color: white;
+        padding: 20px;
+        border-radius: 25px;
+        text-align: center;
+        text-decoration: none;
+        transition: transform 0.3s;
+        display: block;
+    }
+    
+    .action-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 20px rgba(255, 152, 0, 0.4);
+    }
+    
+    .recent-analyses {
+        background: rgba(19, 38, 52, 0.9);
+        border-radius: 25px;
+        padding: 25px;
+        margin-top: 30px;
+        border: 1px solid rgba(255, 152, 0, 0.3);
+    }
+    
+    .analysis-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .analysis-item:last-child {
+        border-bottom: none;
+    }
+    
+    .analysis-score {
+        background: #ff9800;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+    <div class="dashboard-card">
+        <div class="dashboard-icon">🎙️</div>
+        <div class="dashboard-value" id="totalFiles">0</div>
+        <div class="dashboard-label">Всего анализов</div>
+    </div>
+    <div class="dashboard-card">
+        <div class="dashboard-icon">✅</div>
+        <div class="dashboard-value" id="completedFiles">0</div>
+        <div class="dashboard-label">Завершено</div>
+    </div>
+    <div class="dashboard-card">
+        <div class="dashboard-icon">⭐</div>
+        <div class="dashboard-value" id="avgScore">0</div>
+        <div class="dashboard-label">Средний балл</div>
+    </div>
+    <div class="dashboard-card">
+        <div class="dashboard-icon">⏳</div>
+        <div class="dashboard-value" id="inProgress">0</div>
+        <div class="dashboard-label">В процессе</div>
+    </div>
+</div>
+
+<div class="quick-actions">
+    <a href="/" target="_blank" class="action-btn">
+        🎤 Загрузить новый звонок
+    </a>
+    <a href="/criteria" target="_blank" class="action-btn">
+        📋 Критерии оценки
+    </a>
+    <a href="/database-view" target="_blank" class="action-btn">
+        🗄️ База данных
+    </a>
+    <a href="/" class="action-btn" style="background: linear-gradient(95deg, #2e7d32, #1b5e20);">
+        🏠 На главную
+    </a>
+</div>
+
+<div class="recent-analyses">
+    <h3 style="color: #ffcc80; margin-bottom: 20px;">📊 Последние анализы</h3>
+    <div id="recentList">
+        <p style="color: #b0c7e0; text-align: center;">Пока нет завершенных анализов</p>
+    </div>
+</div>
+
+<script>
+    async function loadStats() {
+        try {
+            const response = await fetch('/stats');
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('totalFiles').textContent = data.stats.total_files;
+                document.getElementById('completedFiles').textContent = data.stats.completed;
+                document.getElementById('avgScore').textContent = data.stats.avg_score;
+                document.getElementById('inProgress').textContent = data.stats.in_progress;
+            }
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+    
+    loadStats();
+    setInterval(loadStats, 5000);
+</script>
+{% endblock %}

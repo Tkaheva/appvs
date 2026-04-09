@@ -1,0 +1,75 @@
+﻿{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .register-container {
+        max-width: 400px;
+        margin: 50px auto;
+    }
+    
+    .register-box {
+        background: rgba(19, 38, 52, 0.95);
+        border-radius: 30px;
+        padding: 40px;
+        border: 1px solid rgba(255, 152, 0, 0.5);
+        text-align: center;
+    }
+    
+    .register-box h2 {
+        color: #ff9800;
+        margin-bottom: 20px;
+    }
+    
+    .disabled-message {
+        background: rgba(244, 67, 54, 0.2);
+        border-radius: 15px;
+        padding: 20px;
+        margin: 20px 0;
+    }
+    
+    .test-credentials {
+        background: rgba(76, 175, 80, 0.2);
+        border-radius: 15px;
+        padding: 15px;
+        margin-top: 20px;
+    }
+    
+    .test-credentials strong {
+        color: #ff9800;
+    }
+    
+    .back-link {
+        display: inline-block;
+        margin-top: 20px;
+        color: #ff9800;
+        text-decoration: none;
+    }
+    
+    .back-link:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="register-container">
+    <div class="register-box">
+        <h2>📝 Регистрация</h2>
+        
+        <div class="disabled-message">
+            <p style="font-size: 2rem;">🚧</p>
+            <p><strong>Регистрация временно отключена</strong></p>
+            <p>Для доступа к системе используйте тестовую учетную запись:</p>
+        </div>
+        
+        <div class="test-credentials">
+            <p>🔑 <strong>Логин:</strong> admin</p>
+            <p>🔐 <strong>Пароль:</strong> admin123</p>
+        </div>
+        
+        <a href="/login" class="back-link">← Вернуться к входу</a>
+        <br>
+        <a href="/" class="back-link">🏠 На главную</a>
+    </div>
+</div>
+{% endblock %}

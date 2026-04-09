@@ -1,0 +1,51 @@
+﻿{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .error-container {
+        text-align: center;
+        padding: 60px 20px;
+    }
+    
+    .error-icon {
+        font-size: 5rem;
+        margin-bottom: 20px;
+    }
+    
+    .error-message {
+        background: rgba(244, 67, 54, 0.2);
+        border: 1px solid #f44336;
+        border-radius: 15px;
+        padding: 20px;
+        margin: 20px auto;
+        max-width: 500px;
+        color: #ff6b6b;
+    }
+    
+    .back-button {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 12px 30px;
+        background: linear-gradient(95deg, #ff9800, #f4511e);
+        color: white;
+        text-decoration: none;
+        border-radius: 25px;
+        transition: transform 0.3s;
+    }
+    
+    .back-button:hover {
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <div class="error-icon">❌</div>
+    <h2 style="color: #ff9800;">Ошибка</h2>
+    <div class="error-message">
+        {{ error }}
+    </div>
+    <a href="/" class="back-button">🏠 На главную</a>
+</div>
+{% endblock %}

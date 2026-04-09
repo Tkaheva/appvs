@@ -1,0 +1,150 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoSalon Voice Analytics Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a1a28 0%, #0e2a3a 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .navbar {
+            background: rgba(19, 38, 52, 0.95);
+            border-radius: 50px;
+            padding: 15px 30px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ff9800;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo:hover {
+            opacity: 0.9;
+        }
+        
+        .home-link {
+            background: rgba(255, 152, 0, 0.2);
+            padding: 8px 20px;
+            border-radius: 40px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .home-link:hover {
+            background: #ff9800;
+            color: #0a1a28;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: rgba(19, 38, 52, 0.8);
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            color: #ff9800;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #b0c7e0;
+            font-size: 1.1rem;
+        }
+        
+        .company-badge {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 8px 20px;
+            background: rgba(255, 152, 0, 0.15);
+            border-radius: 40px;
+            border: 1px solid #ff9800;
+            color: #ffcc80;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #b0c7e0;
+        }
+        
+        .footer a {
+            color: #ff9800;
+            text-decoration: none;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <a href="/" class="logo">
+                <span>🚗</span> AutoSalon Analytics
+            </a>
+            <a href="/" class="home-link">
+                <span>🏠</span> На главную
+            </a>
+        </nav>
+        
+        <div class="header">
+            <h1>🚗 AutoSalon Voice Analytics Pro</h1>
+            <p>AI-анализ качества телефонных разговоров по 8 критериям</p>
+            <div class="company-badge">
+                ⭐ ООО ФРЕШ АВТО · ТОП-3 дилер РФ
+            </div>
+        </div>
+        
+        {% block content %}{% endblock %}
+        
+        <div class="footer">
+            <p>AutoSalon Voice Analytics Pro · 2026 · <a href="/">ФРЕШ АВТО</a></p>
+            <p style="font-size: 0.8rem;">8 критериев: приветствие, сбор информации, стиль общения, выявление потребности, акции, решение, активное слушание, завершение</p>
+        </div>
+    </div>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

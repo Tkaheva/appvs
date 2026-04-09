@@ -1,0 +1,444 @@
+﻿{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .db-container {
+        background: rgba(19, 38, 52, 0.9);
+        border-radius: 30px;
+        padding: 25px;
+        margin-top: 20px;
+    }
+    
+    .db-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        border-bottom: 1px solid rgba(255, 152, 0, 0.3);
+        padding-bottom: 15px;
+    }
+    
+    .db-tab {
+        padding: 10px 20px;
+        background: rgba(13, 28, 41, 0.6);
+        border: none;
+        border-radius: 25px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .db-tab:hover {
+        background: rgba(255, 152, 0, 0.3);
+    }
+    
+    .db-tab.active {
+        background: linear-gradient(95deg, #ff9800, #f4511e);
+    }
+    
+    .db-content {
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .db-content.active {
+        display: block;
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow-x: auto;
+        display: block;
+    }
+    
+    .data-table th {
+        background: rgba(255, 152, 0, 0.2);
+        padding: 12px;
+        text-align: left;
+        color: #ffcc80;
+        border-bottom: 2px solid #ff9800;
+    }
+    
+    .data-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        color: #e0e0e0;
+    }
+    
+    .data-table tr:hover {
+        background: rgba(255, 152, 0, 0.1);
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card-db {
+        background: linear-gradient(135deg, rgba(255,152,0,0.1), rgba(244,81,30,0.05));
+        border-radius: 20px;
+        padding: 20px;
+        text-align: center;
+        border: 1px solid rgba(255, 152, 0, 0.3);
+    }
+    
+    .refresh-btn {
+        background: rgba(33, 150, 243, 0.2);
+        border: 1px solid #2196f3;
+        padding: 8px 20px;
+        border-radius: 25px;
+        color: white;
+        cursor: pointer;
+        margin-bottom: 20px;
+    }
+    
+    .refresh-btn:hover {
+        background: #2196f3;
+    }
+    
+    .export-btn {
+        background: rgba(76, 175, 80, 0.2);
+        border: 1px solid #4caf50;
+        padding: 8px 20px;
+        border-radius: 25px;
+        color: white;
+        cursor: pointer;
+        margin-left: 10px;
+    }
+    
+    .export-btn:hover {
+        background: #4caf50;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+    }
+    
+    .badge-completed { background: #4caf50; }
+    .badge-processing { background: #ff9800; }
+    .badge-failed { background: #f44336; }
+    
+    .search-box {
+        margin-bottom: 20px;
+    }
+    
+    .search-box input {
+        width: 100%;
+        padding: 10px 15px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 152, 0, 0.3);
+        border-radius: 25px;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="db-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="color: #ffcc80;">📊 Просмотр базы данных</h2>
+        <div>
+            <button class="refresh-btn" onclick="refreshData()">🔄 Обновить</button>
+            <button class="export-btn" onclick="exportData()">📥 Экспорт</button>
+        </div>
+    </div>
+    
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card-db">
+            <div style="font-size: 2rem;">📁</div>
+            <div style="font-size: 1.8rem; color: #ff9800;" id="totalFiles">0</div>
+            <div>Всего файлов</div>
+        </div>
+        <div class="stat-card-db">
+            <div style="font-size: 2rem;">✅</div>
+            <div style="font-size: 1.8rem; color: #ff9800;" id="completedAnalyses">0</div>
+            <div>Завершено анализов</div>
+        </div>
+        <div class="stat-card-db">
+            <div style="font-size: 2rem;">⭐</div>
+            <div style="font-size: 1.8rem; color: #ff9800;" id="avgScore">0</div>
+            <div>Средний балл</div>
+        </div>
+        <div class="stat-card-db">
+            <div style="font-size: 2rem;">👥</div>
+            <div style="font-size: 1.8rem; color: #ff9800;" id="totalUsers">0</div>
+            <div>Пользователей</div>
+        </div>
+    </div>
+    
+    <div class="db-tabs">
+        <button class="db-tab active" onclick="showTab('files')">📁 Загруженные файлы</button>
+        <button class="db-tab" onclick="showTab('analyses')">📊 Результаты анализов</button>
+        <button class="db-tab" onclick="showTab('criteria')">📋 Оценки критериев</button>
+        <button class="db-tab" onclick="showTab('segments')">💬 Сегменты диалога</button>
+        <button class="db-tab" onclick="showTab('users')">👥 Пользователи</button>
+    </div>
+    
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 Поиск..." onkeyup="searchTable()">
+    </div>
+    
+    <div id="filesContent" class="db-content active">
+        <div class="table-container">
+            <table class="data-table" id="filesTable">
+                <thead>
+                    <tr><th>ID</th><th>Имя файла</th><th>Размер</th><th>Формат</th><th>Статус</th><th>Дата загрузки</th><th>Действия</th></tr>
+                </thead>
+                <tbody id="filesTableBody"><tr><td colspan="7" style="text-align: center;">Загрузка...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="analysesContent" class="db-content">
+        <div class="table-container">
+            <table class="data-table" id="analysesTable">
+                <thead>
+                    <tr><th>ID</th><th>Файл</th><th>Балл</th><th>Оценка</th><th>Слов всего</th><th>Админ слов</th><th>Клиент слов</th><th>Точность</th><th>Дата</th><th>Действия</th></tr>
+                </thead>
+                <tbody id="analysesTableBody"><tr><td colspan="10" style="text-align: center;">Загрузка...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="criteriaContent" class="db-content">
+        <div class="table-container">
+            <table class="data-table" id="criteriaTable">
+                <thead>
+                    <tr><th>ID</th><th>Анализ ID</th><th>Критерий</th><th>Балл</th><th>Ключевых слов</th><th>Найденные ключевые слова</th></tr>
+                </thead>
+                <tbody id="criteriaTableBody"><tr><td colspan="6" style="text-align: center;">Загрузка...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="segmentsContent" class="db-content">
+        <div class="table-container">
+            <table class="data-table" id="segmentsTable">
+                <thead>
+                    <tr><th>ID</th><th>Анализ ID</th><th>Говорящий</th><th>Текст</th><th>Время</th><th>Точность</th></tr>
+                </thead>
+                <tbody id="segmentsTableBody"><tr><td colspan="6" style="text-align: center;">Загрузка...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="usersContent" class="db-content">
+        <div class="table-container">
+            <table class="data-table" id="usersTable">
+                <thead>
+                    <tr><th>ID</th><th>Логин</th><th>Email</th><th>Имя</th><th>Роль</th><th>Статус</th><th>Дата регистрации</th></tr>
+                </thead>
+                <tbody id="usersTableBody"><tr><td colspan="7" style="text-align: center;">Загрузка...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showTab(tabName) {
+        document.querySelectorAll('.db-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(`${tabName}Content`).classList.add('active');
+        document.querySelectorAll('.db-tab').forEach(tab => tab.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+    
+    async function refreshData() {
+        await loadStats();
+        await loadFiles();
+        await loadAnalyses();
+        await loadCriteria();
+        await loadSegments();
+        await loadUsers();
+    }
+    
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/database/stats');
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('totalFiles').textContent = data.stats.total_files;
+                document.getElementById('completedAnalyses').textContent = data.stats.completed_analyses;
+                document.getElementById('avgScore').textContent = data.stats.avg_score || 0;
+                document.getElementById('totalUsers').textContent = data.stats.total_users;
+            }
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+    
+    async function loadFiles() {
+        try {
+            const response = await fetch('/api/database/files');
+            const data = await response.json();
+            if (data.success) {
+                const tbody = document.getElementById('filesTableBody');
+                tbody.innerHTML = data.files.map(file => `
+                    <tr>
+                        <td>${file.id}</td>
+                        <td>${escapeHtml(file.original_filename || file.file_id)}</td>
+                        <td>${formatFileSize(file.file_size)}</td>
+                        <td>${file.file_format}</td>
+                        <td><span class="badge badge-${file.status}">${file.status}</span></td>
+                        <td>${formatDate(file.upload_time)}</td>
+                        <td><button onclick="viewAnalysis('${file.file_id}')" style="background: #ff9800; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Просмотр</button></td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading files:', error);
+        }
+    }
+    
+    async function loadAnalyses() {
+        try {
+            const response = await fetch('/api/database/analyses');
+            const data = await response.json();
+            if (data.success) {
+                const tbody = document.getElementById('analysesTableBody');
+                tbody.innerHTML = data.analyses.map(analysis => `
+                    <tr>
+                        <td>${analysis.id}</td>
+                        <td>${escapeHtml(analysis.original_filename || analysis.file_id)}</td>
+                        <td><strong style="color: #ff9800;">${analysis.total_score}</strong></td>
+                        <td><span class="badge ${analysis.grade_class}">${analysis.grade}</span></td>
+                        <td>${analysis.word_count}</td>
+                        <td>${analysis.admin_word_count}</td>
+                        <td>${analysis.client_word_count}</td>
+                        <td>${Math.round(analysis.avg_confidence * 100)}%</td>
+                        <td>${formatDate(analysis.analysis_time)}</td>
+                        <td><button onclick="viewAnalysisDetails(${analysis.id})" style="background: #ff9800; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Детали</button></td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading analyses:', error);
+        }
+    }
+    
+    async function loadCriteria() {
+        try {
+            const response = await fetch('/api/database/criteria');
+            const data = await response.json();
+            if (data.success) {
+                const tbody = document.getElementById('criteriaTableBody');
+                tbody.innerHTML = data.criteria.map(c => `
+                    <tr>
+                        <td>${c.id}</td>
+                        <td>${c.analysis_id}</td>
+                        <td>${c.criterion_id}</td>
+                        <td><strong style="color: #ff9800;">${c.score}</strong></td>
+                        <td>${c.keyword_count}</td>
+                        <td>${escapeHtml(c.keywords_found || '-')}</td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading criteria:', error);
+        }
+    }
+    
+    async function loadSegments() {
+        try {
+            const response = await fetch('/api/database/segments');
+            const data = await response.json();
+            if (data.success) {
+                const tbody = document.getElementById('segmentsTableBody');
+                tbody.innerHTML = data.segments.map(segment => `
+                    <tr>
+                        <td>${segment.id}</td>
+                        <td>${segment.analysis_id}</td>
+                        <td><span style="color: ${segment.speaker === 'admin' ? '#90caf9' : '#a5d6a7'}">${segment.speaker === 'admin' ? '👨‍💼 Администратор' : '👤 Клиент'}</span></td>
+                        <td style="max-width: 400px;">${escapeHtml(segment.text)}</td>
+                        <td>${segment.timestamp}</td>
+                        <td>${Math.round(segment.confidence * 100)}%</td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading segments:', error);
+        }
+    }
+    
+    async function loadUsers() {
+        try {
+            const response = await fetch('/api/database/users');
+            const data = await response.json();
+            if (data.success) {
+                const tbody = document.getElementById('usersTableBody');
+                tbody.innerHTML = data.users.map(user => `
+                    <tr>
+                        <td>${user.id}</td>
+                        <td>${escapeHtml(user.username)}</td>
+                        <td>${escapeHtml(user.email)}</td>
+                        <td>${escapeHtml(user.full_name || '-')}</td>
+                        <td>${user.role}</td>
+                        <td>${user.is_active ? '✅ Активен' : '❌ Неактивен'}</td>
+                        <td>${formatDate(user.created_at)}</td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading users:', error);
+        }
+    }
+    
+    function viewAnalysis(fileId) {
+        window.open(`/analysis-result/${fileId}`, '_blank');
+    }
+    
+    function viewAnalysisDetails(analysisId) {
+        window.open(`/analysis-details/${analysisId}`, '_blank');
+    }
+    
+    function searchTable() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const tables = document.querySelectorAll('.data-table tbody');
+        tables.forEach(tbody => {
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+    }
+    
+    function formatFileSize(bytes) {
+        if (!bytes) return '0 B';
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+    
+    function formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        return date.toLocaleString('ru-RU');
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '-';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function exportData() {
+        window.open('/api/database/export', '_blank');
+    }
+    
+    refreshData();
+    setInterval(refreshData, 30000);
+</script>
+{% endblock %}

@@ -1,0 +1,77 @@
+﻿{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .result-container {
+        background: rgba(19, 38, 52, 0.9);
+        border-radius: 30px;
+        padding: 25px;
+        margin-top: 20px;
+    }
+    
+    .score-circle {
+        text-align: center;
+        padding: 30px;
+        background: linear-gradient(135deg, rgba(255,152,0,0.2), rgba(244,81,30,0.1));
+        border-radius: 30px;
+        margin-bottom: 30px;
+    }
+    
+    .score-number {
+        font-size: 5rem;
+        font-weight: 700;
+        color: #ff9800;
+    }
+    
+    .transcript {
+        margin-top: 20px;
+    }
+    
+    .transcript-line {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 15px;
+        padding: 15px;
+        margin-bottom: 12px;
+        border-left: 4px solid;
+    }
+    
+    .transcript-line.admin {
+        border-left-color: #2196f3;
+    }
+    
+    .transcript-line.client {
+        border-left-color: #4caf50;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="result-container">
+    <div class="score-circle">
+        <div class="score-number">{{ result.total_score }}/100</div>
+        <div class="grade-badge {{ result.grade_class }}" style="display: inline-block; padding: 8px 24px; border-radius: 40px;">
+            {{ result.grade }}
+        </div>
+        <p style="margin-top: 15px;">{{ result.grade_description }}</p>
+    </div>
+    
+    <h3 style="color: #ffcc80;">📝 Расшифровка диалога</h3>
+    <div class="transcript">
+        {% for segment in result.segments %}
+        <div class="transcript-line {{ segment.speaker }}">
+            <div style="display: flex; justify-content: space-between;">
+                <strong style="color: {% if segment.speaker == 'admin' %}#90caf9{% else %}#a5d6a7{% endif %}">
+                    {{ '👨‍💼 Администратор' if segment.speaker == 'admin' else '👤 Клиент' }}
+                </strong>
+                <span style="color: #b0c7e0;">⏱️ {{ segment.timestamp }}</span>
+            </div>
+            <div style="margin-top: 8px;">{{ segment.text }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div style="margin-top: 30px; text-align: center;">
+        <a href="/" class="back-button" style="background: linear-gradient(95deg, #ff9800, #f4511e); color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px;">🏠 На главную</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+﻿services:
+  web:
+    build: .
+    container_name: autosalon-app
+    ports:
+      - "7000:7000"
+    environment:
+      FLASK_ENV: development
+      PORT: 7000
+    volumes:
+      - ./uploads:/app/uploads
+      - ./app:/app/app
+      - ./templates:/app/templates
+      - ./static:/app/static
+    restart: unless-stopped

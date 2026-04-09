@@ -1,0 +1,120 @@
+﻿{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .login-container {
+        max-width: 400px;
+        margin: 50px auto;
+    }
+    
+    .login-box {
+        background: rgba(19, 38, 52, 0.95);
+        border-radius: 30px;
+        padding: 40px;
+        border: 1px solid rgba(255, 152, 0, 0.5);
+    }
+    
+    .login-box h2 {
+        text-align: center;
+        color: #ff9800;
+        margin-bottom: 30px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #b0c7e0;
+    }
+    
+    .form-group input {
+        width: 100%;
+        padding: 12px 15px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 152, 0, 0.3);
+        border-radius: 25px;
+        color: white;
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+    
+    .form-group input:focus {
+        outline: none;
+        border-color: #ff9800;
+    }
+    
+    .login-btn {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(95deg, #ff9800, #f4511e);
+        border: none;
+        border-radius: 25px;
+        color: white;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.3s;
+    }
+    
+    .login-btn:hover {
+        transform: translateY(-2px);
+    }
+    
+    .error-message {
+        background: rgba(244, 67, 54, 0.2);
+        border: 1px solid #f44336;
+        border-radius: 12px;
+        padding: 10px;
+        margin-bottom: 20px;
+        text-align: center;
+        color: #ff6b6b;
+    }
+    
+    .test-credentials {
+        text-align: center;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        color: #b0c7e0;
+        font-size: 0.9rem;
+    }
+    
+    .test-credentials strong {
+        color: #ff9800;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-box">
+        <h2>🔐 Вход в систему</h2>
+        
+        {% if error %}
+        <div class="error-message">
+            ⚠️ {{ error }}
+        </div>
+        {% endif %}
+        
+        <form method="POST" action="/login">
+            <div class="form-group">
+                <label>👤 Логин</label>
+                <input type="text" name="username" placeholder="Введите логин" required>
+            </div>
+            <div class="form-group">
+                <label>🔑 Пароль</label>
+                <input type="password" name="password" placeholder="Введите пароль" required>
+            </div>
+            <button type="submit" class="login-btn">Войти</button>
+        </form>
+        
+        <div class="test-credentials">
+            <p>Тестовые данные для входа:</p>
+            <p><strong>Логин:</strong> admin &nbsp;|&nbsp; <strong>Пароль:</strong> admin123</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

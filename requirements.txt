@@ -1,0 +1,9 @@
+﻿Flask==2.3.3
+Werkzeug==2.3.7
+SpeechRecognition==3.10.0
+pydub==0.25.1
+gunicorn==21.2.0
+numpy==1.26.4
+flask-limiter==3.5.0
+python-dotenv==1.0.0
+PyMySQL==1.1.1
