@@ -18,7 +18,7 @@ ALLOWED_EXTENSIONS = {'mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'opus'}
 # Конфигурация базы данных для существующего контейнера mysql-local
 DB_CONFIG = {
     'host': 'localhost',
-    'port': 3306,
+    'port': 3307,
     'user': 'root',
     'password': 'rootpassword',
     'database': 'autosalon_analytics',
