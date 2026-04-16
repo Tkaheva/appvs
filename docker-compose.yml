@@ -1,4 +1,18 @@
-﻿services:
+﻿version: '3.8'
+
+services:
+  mysql-db:
+    image: mysql:8.0
+    container_name: mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: autosalon_analytics
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    restart: unless-stopped
+
   web:
     build: .
     container_name: autosalon-app
@@ -7,9 +21,19 @@
     environment:
       FLASK_ENV: development
       PORT: 7000
+      DB_HOST: mysql-db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: rootpassword
+      DB_NAME: autosalon_analytics
     volumes:
       - ./uploads:/app/uploads
       - ./app:/app/app
       - ./templates:/app/templates
       - ./static:/app/static
+    depends_on:
+      - mysql-db
     restart: unless-stopped
+
+volumes:
+  mysql-data:
