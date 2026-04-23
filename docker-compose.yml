@@ -6,19 +6,23 @@
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: autosalon_analytics
     ports:
-      - "3307:3306"
+      - "3307:3306"  # Проброс на хост для локального доступа
     volumes:
       - mysql-data:/var/lib/mysql
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 5
 
   web:
     build: .
     container_name: autosalon-app
     ports:
-      - "7000:7000"
+      - "8080:8080"  # Используем 8080 как в скринах
     environment:
       FLASK_ENV: development
-      PORT: 7000
+      PORT: 8080
       DB_HOST: mysql-db
       DB_PORT: 3306
       DB_USER: root
@@ -30,7 +34,8 @@
       - ./templates:/app/templates
       - ./static:/app/static
     depends_on:
-      - mysql-db
+      mysql-db:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

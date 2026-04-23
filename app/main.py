@@ -17,11 +17,11 @@ ALLOWED_EXTENSIONS = {'mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'opus'}
 
 # Конфигурация базы данных для существующего контейнера mysql-local
 DB_CONFIG = {
-    'host': 'localhost',
-    'port': 3307,
-    'user': 'root',
-    'password': 'rootpassword',
-    'database': 'autosalon_analytics',
+     'host': os.environ.get('DB_HOST', 'localhost'),
+    'port': int(os.environ.get('DB_PORT', 3307)),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', 'rootpassword'),
+    'database': os.environ.get('DB_NAME', 'autosalon_analytics'),
     'charset': 'utf8mb4',
     'cursorclass': pymysql.cursors.DictCursor,
     'connect_timeout': 10
@@ -31,8 +31,9 @@ def get_db_connection():
     """Получение соединения с базой данных mysql-local"""
     try:
         # Если приложение запущено в Docker, используем host.docker.internal
-        if os.path.exists('/.dockerenv'):
-            DB_CONFIG['host'] = 'host.docker.internal'
+        if not os.path.exists('/.dockerenv'):
+            DB_CONFIG['host'] = 'localhost'
+            DB_CONFIG['port'] = 3307  # Проброшенный порт на хосте
         
         print(f"🔌 Подключение к БД: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}")
         connection = pymysql.connect(**DB_CONFIG)
@@ -41,7 +42,7 @@ def get_db_connection():
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
         
-        print("✅ Подключение к базе данных mysql-local успешно")
+        print("✅ Подключение к базе данных успешно")
         return connection
     except Exception as e:
         print(f"❌ Ошибка подключения к БД: {e}")
