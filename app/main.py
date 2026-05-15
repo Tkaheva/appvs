@@ -613,3 +613,42 @@ def analysis_details_view(analysis_id):
         return render_template('error.html', error=str(e))
     finally:
         conn.close()
+
+# ==================== СТАТИСТИКА ДЛЯ ДАШБОРДА ====================
+
+@main_bp.route('/stats')
+def get_stats():
+    """API для получения статистики для дашборда"""
+    total_files = len(analysis_results_store)
+    completed = sum(1 for r in analysis_results_store.values() if r.get('success', False))
+    in_progress = total_files - completed
+    
+    avg_score = 0
+    if completed > 0:
+        scores = []
+        for r in analysis_results_store.values():
+            if r.get('success', False):
+                score = r.get('total_score', 0)
+                if score > 0:
+                    scores.append(score)
+        if scores:
+            avg_score = round(sum(scores) / len(scores))
+    
+    return jsonify({
+        'success': True,
+        'stats': {
+            'total_files': total_files,
+            'completed': completed,
+            'avg_score': avg_score,
+            'in_progress': in_progress
+        }
+    })
+
+
+@main_bp.route('/criteria')
+def get_criteria():
+    """API для получения критериев оценки"""
+    return jsonify({
+        'success': True,
+        'criteria': CRITERIA
+    })
