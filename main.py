@@ -624,7 +624,6 @@ def get_stats():
     completed = sum(1 for r in analysis_results_store.values() if r.get('success', False))
     in_progress = total_files - completed
     
-    # Подсчет среднего балла
     avg_score = 0
     if completed > 0:
         scores = []
@@ -651,6 +650,8 @@ def get_stats():
 def get_recent_analyses():
     """API для получения последних анализов"""
     recent = []
+    
+    # Получить данные из хранилища результатов
     for file_id, result in list(analysis_results_store.items())[-10:]:
         if result.get('success', False):
             recent.append({
@@ -660,6 +661,34 @@ def get_recent_analyses():
                 'analysis_time': result.get('analysis_time', ''),
                 'word_count': result.get('word_count', 0)
             })
+    
+    # Если в хранилище нет, попробовать получить из БД
+    if not recent:
+        conn = get_db_connection()
+        if conn:
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT ar.*, uf.original_filename
+                        FROM analysis_results ar
+                        LEFT JOIN uploaded_files uf ON ar.file_id = uf.file_id
+                        ORDER BY ar.analysis_time DESC
+                        LIMIT 10
+                    """)
+                    db_recent = cursor.fetchall()
+                    for item in db_recent:
+                        recent.append({
+                            'file_id': item.get('file_id', ''),
+                            'total_score': item.get('total_score', 0),
+                            'grade': item.get('grade', ''),
+                            'analysis_time': str(item.get('analysis_time', '')),
+                            'word_count': item.get('word_count', 0),
+                            'original_filename': item.get('original_filename', '')
+                        })
+            except Exception as e:
+                print(f"Ошибка получения последних анализов из БД: {e}")
+            finally:
+                conn.close()
     
     return jsonify({
         'success': True,
