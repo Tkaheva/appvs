@@ -1,44 +1,40 @@
-﻿# version: '3.8'  ← УДАЛИТЕ ЭТУ СТРОКУ
+﻿version: '3.8'
 
 services:
-  mysql-db:
+  mysql:
     image: mysql:8.0
-    container_name: mysql-db
-    restart: unless-stopped
+    container_name: mysql-autosalon
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: autosalon_analytics
     ports:
-      - "3307:3306"
+      - "3308:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-    networks:
-      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 5
 
   web:
     build: .
-    container_name: autosalon-web
-    restart: unless-stopped
+    container_name: autosalon-web-app
     ports:
-      - "8080:8080"
+      - "7000:7000"
     environment:
-      - FLASK_ENV=development
-      - PORT=8080
-      - DB_HOST=mysql-db
-      - DB_PORT=3306
-      - DB_USER=root
-      - DB_PASSWORD=rootpassword
-      - DB_NAME=autosalon_analytics
+      FLASK_ENV: development
+      PORT: 8080
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: rootpassword
+      DB_NAME: autosalon_analytics
     volumes:
       - ./uploads:/app/uploads
     depends_on:
-      - mysql-db
-    networks:
-      - app-network
-
-networks:
-  app-network:
-    driver: bridge
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   mysql-data:

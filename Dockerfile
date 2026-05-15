@@ -15,4 +15,4 @@ RUN mkdir -p /app/uploads
 
 EXPOSE 7000
 
-CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=7000"]
+CMD ["python", "-m", "flask", "run.py", "--host=0.0.0.0", "--port=7000"]
