@@ -20,7 +20,7 @@ ALLOWED_EXTENSIONS = {'mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'opus'}
 # Конфигурация базы данных
 DB_CONFIG = {
     'host': 'localhost',
-    'port': 3306,
+    'port': 3308,
     'user': 'root',
     'password': 'rootpassword',
     'database': 'autosalon_analytics',
