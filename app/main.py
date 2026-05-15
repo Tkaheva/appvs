@@ -1,4 +1,4 @@
-﻿# app/routes.py - ОБНОВЛЕННАЯ ВЕРСИЯ
+﻿# app/main.py - ПОЛНАЯ ВЕРСИЯ
 
 import os
 import uuid
@@ -29,6 +29,7 @@ DB_CONFIG = {
     'connect_timeout': 10
 }
 
+
 def get_db_connection():
     """Получение соединения с базой данных"""
     try:
@@ -43,18 +44,62 @@ def get_db_connection():
         print(f"❌ Ошибка подключения к БД: {e}")
         return None
 
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+# ==================== МАРШРУТЫ ====================
 
 @main_bp.route('/')
 def index():
     return render_template('index.html', criteria=CRITERIA)
+
 
 @main_bp.route('/dashboard')
 def dashboard():
     if not session.get('user'):
         return redirect(url_for('auth.login'))
     return render_template('dashboard.html', user=session.get('user', {}))
+
+
+@main_bp.route('/analysis-status/<file_id>')
+def analysis_status(file_id):
+    """Проверка статуса анализа (для фронтенда)"""
+    if file_id in analysis_results_store:
+        return jsonify(analysis_results_store[file_id])
+    
+    # Проверить в БД
+    conn = get_db_connection()
+    if conn:
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT ar.*, uf.status 
+                    FROM analysis_results ar
+                    JOIN uploaded_files uf ON ar.file_id = uf.file_id
+                    WHERE ar.file_id = %s
+                """, (file_id,))
+                result = cursor.fetchone()
+                if result:
+                    return jsonify({
+                        'success': True,
+                        'file_id': file_id,
+                        'total_score': result.get('total_score', 0),
+                        'grade': result.get('grade', ''),
+                        'grade_class': result.get('grade_class', ''),
+                        'word_count': result.get('word_count', 0),
+                        'admin_word_count': result.get('admin_word_count', 0),
+                        'client_word_count': result.get('client_word_count', 0),
+                        'confidence': result.get('avg_confidence', 0)
+                    })
+        except Exception as e:
+            print(f"Ошибка проверки статуса в БД: {e}")
+        finally:
+            conn.close()
+    
+    return jsonify({'success': False, 'status': 'processing'})
+
 
 @main_bp.route('/upload', methods=['POST'])
 def upload_file():
@@ -90,6 +135,7 @@ def upload_file():
         'format': file_ext.upper()
     })
 
+
 def save_uploaded_file_to_db(file_id, original_filename, stored_filename, file_size, file_format, file_path):
     """Сохранение информации о загруженном файле в БД"""
     conn = get_db_connection()
@@ -117,6 +163,7 @@ def save_uploaded_file_to_db(file_id, original_filename, stored_filename, file_s
         conn.rollback()
     finally:
         conn.close()
+
 
 @main_bp.route('/analyze/<file_id>', methods=['POST'])
 def analyze_file(file_id):
@@ -164,6 +211,7 @@ def analyze_file(file_id):
     
     return jsonify({'success': True, 'message': 'Анализ запущен', 'file_id': file_id})
 
+
 def update_file_status(file_id, status):
     """Обновление статуса файла в БД"""
     conn = get_db_connection()
@@ -182,6 +230,7 @@ def update_file_status(file_id, status):
         print(f"❌ Ошибка обновления статуса: {e}")
     finally:
         conn.close()
+
 
 def save_to_database(file_id, analysis_result):
     """Сохранение результатов анализа в базу данных"""
@@ -252,6 +301,7 @@ def save_to_database(file_id, analysis_result):
         conn.rollback()
     finally:
         conn.close()
+
 
 def init_database_tables(conn):
     """Инициализация таблиц в базе данных"""
@@ -338,12 +388,14 @@ def init_database_tables(conn):
     except Exception as e:
         print(f"❌ Ошибка создания таблиц: {e}")
 
+
 # ==================== API ДЛЯ ПРОСМОТРА БАЗЫ ДАННЫХ ====================
 
 @main_bp.route('/database-view')
 def database_view():
     """Страница просмотра базы данных"""
     return render_template('database_view.html')
+
 
 @main_bp.route('/api/database/stats')
 def api_db_stats():
@@ -380,6 +432,7 @@ def api_db_stats():
     finally:
         conn.close()
 
+
 @main_bp.route('/api/database/files')
 def api_db_files():
     """API для получения списка файлов"""
@@ -405,6 +458,7 @@ def api_db_files():
         return jsonify({'success': False, 'error': str(e)})
     finally:
         conn.close()
+
 
 @main_bp.route('/api/database/analyses')
 def api_db_analyses():
@@ -434,6 +488,7 @@ def api_db_analyses():
     finally:
         conn.close()
 
+
 @main_bp.route('/api/database/criteria')
 def api_db_criteria():
     """API для получения оценок критериев"""
@@ -458,6 +513,7 @@ def api_db_criteria():
     finally:
         conn.close()
 
+
 @main_bp.route('/api/database/segments')
 def api_db_segments():
     """API для получения сегментов диалога"""
@@ -481,6 +537,7 @@ def api_db_segments():
         return jsonify({'success': False, 'error': str(e)})
     finally:
         conn.close()
+
 
 @main_bp.route('/api/database/users')
 def api_db_users():
@@ -508,6 +565,7 @@ def api_db_users():
     finally:
         conn.close()
 
+
 @main_bp.route('/analysis-result/<file_id>')
 def analysis_result_view(file_id):
     """Страница просмотра результата анализа"""
@@ -515,6 +573,7 @@ def analysis_result_view(file_id):
     if not result:
         return render_template('error.html', error='Анализ не найден')
     return render_template('analysis_result.html', result=result)
+
 
 @main_bp.route('/analysis-details/<int:analysis_id>')
 def analysis_details_view(analysis_id):
