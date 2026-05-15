@@ -75,10 +75,42 @@
         align-items: center;
         padding: 15px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    
+    .analysis-item:hover {
+        background: rgba(255, 152, 0, 0.1);
     }
     
     .analysis-item:last-child {
         border-bottom: none;
+    }
+    
+    .analysis-info {
+        flex: 1;
+    }
+    
+    .analysis-date {
+        font-size: 0.85rem;
+        color: #b0c7e0;
+        margin-bottom: 5px;
+    }
+    
+    .analysis-filename {
+        font-size: 0.9rem;
+        color: #ffcc80;
+    }
+    
+    .analysis-stats {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+    }
+    
+    .analysis-word-count {
+        color: #b0c7e0;
+        font-size: 0.9rem;
     }
     
     .analysis-score {
@@ -86,6 +118,56 @@
         padding: 5px 15px;
         border-radius: 20px;
         font-weight: bold;
+        font-size: 1.1rem;
+    }
+    
+    .analysis-grade {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: bold;
+    }
+    
+    .grade-excellent { background: #2e7d32; }
+    .grade-good { background: #ff9800; }
+    .grade-average { background: #ffc107; color: #333; }
+    .grade-poor { background: #f44336; }
+    .grade-fail { background: #b71c1c; }
+    
+    .loading-spinner-small {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: #ff9800;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .refresh-btn {
+        background: rgba(33, 150, 243, 0.2);
+        border: 1px solid #2196f3;
+        padding: 5px 15px;
+        border-radius: 20px;
+        color: white;
+        cursor: pointer;
+        font-size: 0.8rem;
+        margin-left: 15px;
+    }
+    
+    .refresh-btn:hover {
+        background: #2196f3;
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
     }
 </style>
 {% endblock %}
@@ -130,9 +212,15 @@
 </div>
 
 <div class="recent-analyses">
-    <h3 style="color: #ffcc80; margin-bottom: 20px;">📊 Последние анализы</h3>
+    <div class="section-header">
+        <h3 style="color: #ffcc80; margin: 0;">📊 Последние анализы</h3>
+        <button class="refresh-btn" onclick="loadRecentAnalyses()">🔄 Обновить</button>
+    </div>
     <div id="recentList">
-        <p style="color: #b0c7e0; text-align: center;">Пока нет завершенных анализов</p>
+        <div style="text-align: center; padding: 20px;">
+            <div class="loading-spinner-small"></div>
+            <p style="color: #b0c7e0; margin-top: 10px;">Загрузка анализов...</p>
+        </div>
     </div>
 </div>
 
@@ -153,7 +241,96 @@
         }
     }
     
-    loadStats();
-    setInterval(loadStats, 5000);
+    // Загрузка последних анализов
+    async function loadRecentAnalyses() {
+        try {
+            const response = await fetch('/api/recent-analyses');
+            const data = await response.json();
+            
+            const container = document.getElementById('recentList');
+            if (!container) return;
+            
+            if (data.success && data.analyses && data.analyses.length > 0) {
+                container.innerHTML = data.analyses.map(analysis => {
+                    // Форматирование даты
+                    let dateStr = 'Дата неизвестна';
+                    if (analysis.analysis_time) {
+                        try {
+                            const date = new Date(analysis.analysis_time);
+                            dateStr = date.toLocaleString('ru-RU', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                        } catch(e) {
+                            dateStr = analysis.analysis_time;
+                        }
+                    }
+                    
+                    // Определение класса оценки
+                    let gradeClass = '';
+                    const score = analysis.total_score || 0;
+                    if (score >= 90) gradeClass = 'grade-excellent';
+                    else if (score >= 80) gradeClass = 'grade-good';
+                    else if (score >= 70) gradeClass = 'grade-average';
+                    else if (score >= 60) gradeClass = 'grade-poor';
+                    else gradeClass = 'grade-fail';
+                    
+                    const gradeText = analysis.grade || (score >= 90 ? 'Отлично' : score >= 80 ? 'Хорошо' : score >= 70 ? 'Средне' : score >= 60 ? 'Ниже среднего' : 'Требует обучения');
+                    
+                    return `
+                        <div class="analysis-item" onclick="viewAnalysisDetails('${analysis.file_id}')">
+                            <div class="analysis-info">
+                                <div class="analysis-date">📅 ${dateStr}</div>
+                                ${analysis.original_filename ? `<div class="analysis-filename">📁 ${escapeHtml(analysis.original_filename)}</div>` : ''}
+                            </div>
+                            <div class="analysis-stats">
+                                <div class="analysis-word-count">📝 ${analysis.word_count || 0} слов</div>
+                                <div class="analysis-grade ${gradeClass}">${gradeText}</div>
+                                <div class="analysis-score">${score}/100</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                container.innerHTML = '<p style="color: #b0c7e0; text-align: center; padding: 40px;">📭 Пока нет завершенных анализов</p>';
+            }
+        } catch (error) {
+            console.error('Error loading recent analyses:', error);
+            const container = document.getElementById('recentList');
+            if (container) {
+                container.innerHTML = '<p style="color: #f44336; text-align: center;">❌ Ошибка загрузки анализов</p>';
+            }
+        }
+    }
+    
+    // Просмотр деталей анализа
+    function viewAnalysisDetails(fileId) {
+        if (fileId) {
+            window.open(`/analysis-result/${fileId}`, '_blank');
+        }
+    }
+    
+    // Функция для экранирования HTML
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Вызвать функции при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStats();
+        loadRecentAnalyses();
+    });
+    
+    // Обновление статистики каждые 10 секунд
+    setInterval(loadStats, 10000);
+    
+    // Обновление списка анализов каждые 30 секунд
+    setInterval(loadRecentAnalyses, 30000);
 </script>
 {% endblock %}
