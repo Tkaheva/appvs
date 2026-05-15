@@ -1,4 +1,6 @@
-﻿import os
+﻿# app/routes.py - ОБНОВЛЕННАЯ ВЕРСИЯ
+
+import os
 import uuid
 import json
 import threading
@@ -15,34 +17,27 @@ analysis_results_store = {}
 
 ALLOWED_EXTENSIONS = {'mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'opus'}
 
-# Конфигурация базы данных для существующего контейнера mysql-local
+# Конфигурация базы данных
 DB_CONFIG = {
-     'host': os.environ.get('DB_HOST', 'localhost'),
-    'port': int(os.environ.get('DB_PORT', 3307)),
-    'user': os.environ.get('DB_USER', 'root'),
-    'password': os.environ.get('DB_PASSWORD', 'rootpassword'),
-    'database': os.environ.get('DB_NAME', 'autosalon_analytics'),
+    'host': 'localhost',
+    'port': 3306,
+    'user': 'root',
+    'password': 'rootpassword',
+    'database': 'autosalon_analytics',
     'charset': 'utf8mb4',
     'cursorclass': pymysql.cursors.DictCursor,
     'connect_timeout': 10
 }
 
 def get_db_connection():
-    """Получение соединения с базой данных mysql-local"""
+    """Получение соединения с базой данных"""
     try:
-        # Если приложение запущено в Docker, используем host.docker.internal
-        if not os.path.exists('/.dockerenv'):
-            DB_CONFIG['host'] = 'localhost'
-            DB_CONFIG['port'] = 3307  # Проброшенный порт на хосте
+        if os.path.exists('/.dockerenv'):
+            DB_CONFIG['host'] = 'host.docker.internal'
         
-        print(f"🔌 Подключение к БД: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}")
         connection = pymysql.connect(**DB_CONFIG)
-        
-        # Проверка соединения
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-        
-        print("✅ Подключение к базе данных успешно")
         return connection
     except Exception as e:
         print(f"❌ Ошибка подключения к БД: {e}")
@@ -61,20 +56,9 @@ def dashboard():
         return redirect(url_for('auth.login'))
     return render_template('dashboard.html', user=session.get('user', {}))
 
-@main_bp.route('/health')
-def health_check():
-    # Проверка подключения к БД
-    db_status = "connected" if get_db_connection() else "disconnected"
-    return jsonify({
-        'status': 'healthy',
-        'database': db_status,
-        'container': 'autosalon-app',
-        'timestamp': datetime.datetime.now().isoformat(),
-        'version': '3.0.0'
-    })
-
 @main_bp.route('/upload', methods=['POST'])
 def upload_file():
+    """Загрузка файла с записью в БД"""
     if 'file' not in request.files:
         return jsonify({'error': 'Файл не найден'}), 400
     
@@ -94,6 +78,9 @@ def upload_file():
     
     file_size = os.path.getsize(file_path)
     
+    # СОХРАНЕНИЕ В БД СРАЗУ ПОСЛЕ ЗАГРУЗКИ
+    save_uploaded_file_to_db(file_id, filename, saved_filename, file_size, file_ext, file_path)
+    
     return jsonify({
         'success': True,
         'file_id': file_id,
@@ -103,8 +90,37 @@ def upload_file():
         'format': file_ext.upper()
     })
 
+def save_uploaded_file_to_db(file_id, original_filename, stored_filename, file_size, file_format, file_path):
+    """Сохранение информации о загруженном файле в БД"""
+    conn = get_db_connection()
+    if not conn:
+        print("⚠️ Не удалось подключиться к БД для сохранения файла")
+        return
+    
+    try:
+        with conn.cursor() as cursor:
+            # Проверяем существование таблиц
+            cursor.execute("SHOW TABLES LIKE 'uploaded_files'")
+            if not cursor.fetchone():
+                init_database_tables(conn)
+            
+            # Вставляем запись о файле
+            cursor.execute("""
+                INSERT INTO uploaded_files (file_id, original_filename, stored_filename, file_size, file_format, status, upload_time)
+                VALUES (%s, %s, %s, %s, %s, 'uploaded', %s)
+            """, (file_id, original_filename, stored_filename, file_size, file_format, datetime.datetime.now()))
+            
+            conn.commit()
+            print(f"✅ Файл сохранен в БД: {file_id}")
+    except Exception as e:
+        print(f"❌ Ошибка сохранения файла в БД: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
+
 @main_bp.route('/analyze/<file_id>', methods=['POST'])
 def analyze_file(file_id):
+    """Запуск анализа с обновлением статуса в БД"""
     file_path = None
     for ext in ALLOWED_EXTENSIONS:
         test_path = os.path.join(current_app.config['UPLOAD_FOLDER'], f"{file_id}.{ext}")
@@ -115,6 +131,9 @@ def analyze_file(file_id):
     if not file_path:
         return jsonify({'error': 'Файл не найден'}), 404
     
+    # Обновляем статус в БД на "processing"
+    update_file_status(file_id, 'processing')
+    
     def analyze_task():
         try:
             audio_result = audio_processor.process(file_path)
@@ -123,8 +142,11 @@ def analyze_file(file_id):
             analysis_result['file_id'] = file_id
             analysis_results_store[file_id] = analysis_result
             
-            # Сохранение в базу данных
+            # Сохранение результатов в базу данных
             save_to_database(file_id, analysis_result)
+            
+            # Обновляем статус на "completed"
+            update_file_status(file_id, 'completed')
             
             if os.path.exists(file_path):
                 os.remove(file_path)
@@ -134,6 +156,7 @@ def analyze_file(file_id):
             error_msg = f"Ошибка анализа: {str(e)}\n{traceback.format_exc()}"
             print(error_msg)
             analysis_results_store[file_id] = {'success': False, 'error': str(e)}
+            update_file_status(file_id, 'failed')
     
     thread = threading.Thread(target=analyze_task)
     thread.daemon = True
@@ -141,8 +164,27 @@ def analyze_file(file_id):
     
     return jsonify({'success': True, 'message': 'Анализ запущен', 'file_id': file_id})
 
+def update_file_status(file_id, status):
+    """Обновление статуса файла в БД"""
+    conn = get_db_connection()
+    if not conn:
+        return
+    
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                UPDATE uploaded_files 
+                SET status = %s 
+                WHERE file_id = %s
+            """, (status, file_id))
+            conn.commit()
+    except Exception as e:
+        print(f"❌ Ошибка обновления статуса: {e}")
+    finally:
+        conn.close()
+
 def save_to_database(file_id, analysis_result):
-    """Сохранение результатов анализа в базу данных mysql-local"""
+    """Сохранение результатов анализа в базу данных"""
     conn = get_db_connection()
     if not conn:
         print("⚠️ Не удалось подключиться к БД для сохранения")
@@ -150,29 +192,17 @@ def save_to_database(file_id, analysis_result):
     
     try:
         with conn.cursor() as cursor:
-            # Проверяем существование таблиц
-            cursor.execute("SHOW TABLES LIKE 'users'")
-            if not cursor.fetchone():
-                print("⚠️ Таблицы не найдены, создаем...")
-                init_database_tables(conn)
-            
-            # Сохраняем информацию о файле
+            # Обновляем запись файла
             cursor.execute("""
-                INSERT INTO uploaded_files (file_id, original_filename, stored_filename, file_size, file_format, status)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (
-                file_id,
-                f"analysis_{file_id}.json",
-                f"{file_id}.json",
-                0,
-                'json',
-                'completed'
-            ))
+                UPDATE uploaded_files 
+                SET status = 'completed' 
+                WHERE file_id = %s
+            """, (file_id,))
             
             # Сохраняем результаты анализа
             cursor.execute("""
-                INSERT INTO analysis_results (file_id, total_score, grade, grade_class, word_count, admin_word_count, client_word_count, avg_confidence)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO analysis_results (file_id, total_score, grade, grade_class, word_count, admin_word_count, client_word_count, avg_confidence, analysis_time)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 file_id,
                 analysis_result.get('total_score', 0),
@@ -181,7 +211,8 @@ def save_to_database(file_id, analysis_result):
                 analysis_result.get('word_count', 0),
                 analysis_result.get('admin_word_count', 0),
                 analysis_result.get('client_word_count', 0),
-                analysis_result.get('confidence', 0)
+                analysis_result.get('confidence', 0),
+                datetime.datetime.now()
             ))
             
             analysis_id = cursor.lastrowid
@@ -226,7 +257,6 @@ def init_database_tables(conn):
     """Инициализация таблиц в базе данных"""
     try:
         with conn.cursor() as cursor:
-            # Создаем таблицу пользователей
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -241,7 +271,6 @@ def init_database_tables(conn):
                 )
             """)
             
-            # Создаем таблицу загруженных файлов
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS uploaded_files (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -253,12 +282,10 @@ def init_database_tables(conn):
                     file_format VARCHAR(10) NOT NULL,
                     upload_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     file_path VARCHAR(500),
-                    status ENUM('uploaded', 'processing', 'completed', 'failed') DEFAULT 'uploaded',
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                    status ENUM('uploaded', 'processing', 'completed', 'failed') DEFAULT 'uploaded'
                 )
             """)
             
-            # Создаем таблицу результатов анализа
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS analysis_results (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -275,7 +302,6 @@ def init_database_tables(conn):
                 )
             """)
             
-            # Создаем таблицу оценок критериев
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS criteria_scores (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -288,7 +314,6 @@ def init_database_tables(conn):
                 )
             """)
             
-            # Создаем таблицу сегментов диалога
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS dialogue_segments (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -302,7 +327,6 @@ def init_database_tables(conn):
                 )
             """)
             
-            # Добавляем тестового администратора
             cursor.execute("""
                 INSERT IGNORE INTO users (username, email, password_hash, full_name, role) 
                 VALUES ('admin', 'admin@autosalon.local', 'admin123', 'Администратор', 'admin')
@@ -314,72 +338,7 @@ def init_database_tables(conn):
     except Exception as e:
         print(f"❌ Ошибка создания таблиц: {e}")
 
-@main_bp.route('/analysis-status/<file_id>')
-def analysis_status(file_id):
-    if file_id in analysis_results_store:
-        return jsonify(analysis_results_store[file_id])
-    return jsonify({'success': False, 'status': 'processing'})
-
-@main_bp.route('/download/<file_id>')
-def download_report(file_id):
-    result = analysis_results_store.get(file_id)
-    if not result:
-        return jsonify({'error': 'Анализ не найден'}), 404
-    
-    report_path = os.path.join(current_app.config['UPLOAD_FOLDER'], f"report_{file_id}.json")
-    with open(report_path, 'w', encoding='utf-8') as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
-    
-    return send_file(
-        report_path,
-        as_attachment=True,
-        download_name=f"анализ_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-        mimetype='application/json'
-    )
-
-@main_bp.route('/clear/<file_id>', methods=['POST'])
-def clear_file(file_id):
-    if file_id in analysis_results_store:
-        del analysis_results_store[file_id]
-    
-    for ext in ALLOWED_EXTENSIONS:
-        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], f"{file_id}.{ext}")
-        if os.path.exists(file_path):
-            os.remove(file_path)
-    
-    report_path = os.path.join(current_app.config['UPLOAD_FOLDER'], f"report_{file_id}.json")
-    if os.path.exists(report_path):
-        os.remove(report_path)
-    
-    return jsonify({'success': True})
-
-@main_bp.route('/stats')
-def get_stats():
-    total_files = len(analysis_results_store)
-    completed = sum(1 for r in analysis_results_store.values() if r.get('success'))
-    avg_score = 0
-    if completed > 0:
-        scores = [r.get('total_score', 0) for r in analysis_results_store.values() if r.get('success')]
-        avg_score = round(sum(scores) / len(scores)) if scores else 0
-    
-    return jsonify({
-        'success': True,
-        'stats': {
-            'total_files': total_files,
-            'completed': completed,
-            'avg_score': avg_score,
-            'in_progress': total_files - completed
-        }
-    })
-
-@main_bp.route('/criteria')
-def get_criteria():
-    return jsonify({
-        'success': True,
-        'criteria': CRITERIA
-    })
-
-# ==================== API для просмотра базы данных ====================
+# ==================== API ДЛЯ ПРОСМОТРА БАЗЫ ДАННЫХ ====================
 
 @main_bp.route('/database-view')
 def database_view():
@@ -391,7 +350,7 @@ def api_db_stats():
     """API для получения статистики"""
     conn = get_db_connection()
     if not conn:
-        return jsonify({'success': False, 'error': 'Не удалось подключиться к БД mysql-local'})
+        return jsonify({'success': False, 'error': 'Не удалось подключиться к БД'})
     
     try:
         with conn.cursor() as cursor:
@@ -426,7 +385,7 @@ def api_db_files():
     """API для получения списка файлов"""
     conn = get_db_connection()
     if not conn:
-        return jsonify({'success': False, 'error': 'Не удалось подключиться к БД mysql-local'})
+        return jsonify({'success': False, 'error': 'Не удалось подключиться к БД'})
     
     try:
         with conn.cursor() as cursor:
@@ -452,7 +411,7 @@ def api_db_analyses():
     """API для получения списка анализов"""
     conn = get_db_connection()
     if not conn:
-        return jsonify({'success': False, 'error': 'Не удалось подключиться к БД mysql-local'})
+        return jsonify({'success': False, 'error': 'Не удалось подключиться к БД'})
     
     try:
         with conn.cursor() as cursor:
@@ -480,13 +439,16 @@ def api_db_criteria():
     """API для получения оценок критериев"""
     conn = get_db_connection()
     if not conn:
-        return jsonify({'success': False, 'error': 'Не удалось подключиться к БД mysql-local'})
+        return jsonify({'success': False, 'error': 'Не удалось подключиться к БД'})
     
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                SELECT * FROM criteria_scores 
-                ORDER BY analysis_id DESC, id DESC 
+                SELECT cs.*, ar.file_id, uf.original_filename
+                FROM criteria_scores cs
+                LEFT JOIN analysis_results ar ON cs.analysis_id = ar.id
+                LEFT JOIN uploaded_files uf ON ar.file_id = uf.file_id
+                ORDER BY cs.analysis_id DESC, cs.id DESC 
                 LIMIT 200
             """)
             criteria = cursor.fetchall()
@@ -501,13 +463,16 @@ def api_db_segments():
     """API для получения сегментов диалога"""
     conn = get_db_connection()
     if not conn:
-        return jsonify({'success': False, 'error': 'Не удалось подключиться к БД mysql-local'})
+        return jsonify({'success': False, 'error': 'Не удалось подключиться к БД'})
     
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                SELECT * FROM dialogue_segments 
-                ORDER BY analysis_id DESC, segment_index 
+                SELECT ds.*, ar.file_id, uf.original_filename
+                FROM dialogue_segments ds
+                LEFT JOIN analysis_results ar ON ds.analysis_id = ar.id
+                LEFT JOIN uploaded_files uf ON ar.file_id = uf.file_id
+                ORDER BY ds.analysis_id DESC, ds.segment_index 
                 LIMIT 500
             """)
             segments = cursor.fetchall()
@@ -522,7 +487,7 @@ def api_db_users():
     """API для получения списка пользователей"""
     conn = get_db_connection()
     if not conn:
-        return jsonify({'success': False, 'error': 'Не удалось подключиться к БД mysql-local'})
+        return jsonify({'success': False, 'error': 'Не удалось подключиться к БД'})
     
     try:
         with conn.cursor() as cursor:
@@ -543,45 +508,6 @@ def api_db_users():
     finally:
         conn.close()
 
-@main_bp.route('/api/database/export')
-def api_db_export():
-    """Экспорт данных в JSON"""
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({'success': False, 'error': 'Не удалось подключиться к БД mysql-local'})
-    
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM users")
-            users = cursor.fetchall()
-            
-            cursor.execute("SELECT * FROM uploaded_files")
-            files = cursor.fetchall()
-            
-            cursor.execute("SELECT * FROM analysis_results")
-            analyses = cursor.fetchall()
-            
-            cursor.execute("SELECT * FROM criteria_scores")
-            criteria = cursor.fetchall()
-            
-            cursor.execute("SELECT * FROM dialogue_segments")
-            segments = cursor.fetchall()
-            
-            export_data = {
-                'export_date': datetime.datetime.now().isoformat(),
-                'users': users,
-                'uploaded_files': files,
-                'analysis_results': analyses,
-                'criteria_scores': criteria,
-                'dialogue_segments': segments
-            }
-            
-            return jsonify(export_data)
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-    finally:
-        conn.close()
-
 @main_bp.route('/analysis-result/<file_id>')
 def analysis_result_view(file_id):
     """Страница просмотра результата анализа"""
@@ -595,7 +521,7 @@ def analysis_details_view(analysis_id):
     """Страница деталей анализа по ID"""
     conn = get_db_connection()
     if not conn:
-        return render_template('error.html', error='Не удалось подключиться к БД mysql-local')
+        return render_template('error.html', error='Не удалось подключиться к БД')
     
     try:
         with conn.cursor() as cursor:
