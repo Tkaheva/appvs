@@ -19,11 +19,11 @@ ALLOWED_EXTENSIONS = {'mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'opus'}
 
 # Конфигурация базы данных
 DB_CONFIG = {
-    'host': 'localhost',
-    'port': 3308,
-    'user': 'root',
-    'password': 'rootpassword',
-    'database': 'autosalon_analytics',
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'port': int(os.environ.get('DB_PORT', 3308)),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', 'rootpassword'),
+    'database': os.environ.get('DB_NAME', 'autosalon_analytics'),
     'charset': 'utf8mb4',
     'cursorclass': pymysql.cursors.DictCursor,
     'connect_timeout': 10
