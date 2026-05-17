@@ -16,12 +16,24 @@
         text-align: center;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
         transition: transform 0.3s, box-shadow 0.3s;
-        border: 1px solid rgba(26, 58, 92, 0.1);
+        border: none;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .dashboard-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #0a2a4a, #1a6ba0);
     }
     
     .dashboard-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(26, 58, 92, 0.15);
+        box-shadow: 0 8px 25px rgba(26, 107, 160, 0.15);
     }
     
     .dashboard-icon {
@@ -32,7 +44,10 @@
     .dashboard-value {
         font-size: 2.5rem;
         font-weight: 700;
-        color: #1a3a5c;
+        background: linear-gradient(135deg, #0a2a4a, #1a6ba0);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
     }
     
     .dashboard-label {
@@ -49,7 +64,7 @@
     }
     
     .action-btn {
-        background: linear-gradient(135deg, #1a3a5c, #0d2a4a);
+        background: linear-gradient(135deg, #0a2a4a, #1a6ba0);
         color: white;
         padding: 20px;
         border-radius: 25px;
@@ -58,12 +73,29 @@
         transition: all 0.3s;
         display: block;
         font-weight: 600;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .action-btn::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+    }
+    
+    .action-btn:hover::after {
+        left: 100%;
     }
     
     .action-btn:hover {
         transform: translateY(-3px);
-        box-shadow: 0 5px 20px rgba(26, 58, 92, 0.3);
-        background: linear-gradient(135deg, #244a6c, #1a3a5c);
+        box-shadow: 0 5px 20px rgba(26, 107, 160, 0.4);
+        background: linear-gradient(135deg, #1a3a5a, #2a7bb0);
     }
     
     .action-btn-green {
@@ -80,7 +112,7 @@
         padding: 25px;
         margin-top: 30px;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        border: 1px solid rgba(26, 58, 92, 0.1);
+        border: none;
     }
     
     .analysis-item {
@@ -88,14 +120,14 @@
         justify-content: space-between;
         align-items: center;
         padding: 15px;
-        border-bottom: 1px solid rgba(26, 58, 92, 0.1);
+        border-bottom: 1px solid rgba(10, 42, 74, 0.1);
         cursor: pointer;
         transition: background 0.3s;
         border-radius: 15px;
     }
     
     .analysis-item:hover {
-        background: rgba(26, 58, 92, 0.05);
+        background: rgba(26, 107, 160, 0.05);
     }
     
     .analysis-item:last-child {
@@ -114,7 +146,7 @@
     
     .analysis-filename {
         font-size: 0.9rem;
-        color: #1a3a5c;
+        color: #1a6ba0;
         font-weight: 500;
     }
     
@@ -130,7 +162,7 @@
     }
     
     .analysis-score {
-        background: #1a3a5c;
+        background: linear-gradient(135deg, #0a2a4a, #1a6ba0);
         color: white;
         padding: 5px 15px;
         border-radius: 20px;
@@ -146,7 +178,7 @@
     }
     
     .grade-excellent { background: #2e7d32; color: white; }
-    .grade-good { background: #1a3a5c; color: white; }
+    .grade-good { background: #1a6ba0; color: white; }
     .grade-average { background: #ffc107; color: #333; }
     .grade-poor { background: #f44336; color: white; }
     .grade-fail { background: #b71c1c; color: white; }
@@ -155,8 +187,8 @@
         display: inline-block;
         width: 20px;
         height: 20px;
-        border: 2px solid rgba(26, 58, 92, 0.2);
-        border-top-color: #1a3a5c;
+        border: 2px solid rgba(26, 107, 160, 0.2);
+        border-top-color: #1a6ba0;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
     }
@@ -166,11 +198,11 @@
     }
     
     .refresh-btn {
-        background: rgba(26, 58, 92, 0.1);
-        border: 1px solid rgba(26, 58, 92, 0.3);
+        background: rgba(26, 107, 160, 0.1);
+        border: 1px solid rgba(26, 107, 160, 0.3);
         padding: 5px 15px;
         border-radius: 20px;
-        color: #1a3a5c;
+        color: #1a6ba0;
         cursor: pointer;
         font-size: 0.8rem;
         margin-left: 15px;
@@ -178,7 +210,7 @@
     }
     
     .refresh-btn:hover {
-        background: rgba(26, 58, 92, 0.2);
+        background: rgba(26, 107, 160, 0.2);
     }
     
     .section-header {
@@ -189,11 +221,14 @@
     }
     
     .section-header h3 {
-        color: #1a3a5c;
+        background: linear-gradient(135deg, #0a2a4a, #1a6ba0);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
     }
     
     h3 {
-        color: #1a3a5c;
+        color: #0a2a4a;
     }
 </style>
 {% endblock %}

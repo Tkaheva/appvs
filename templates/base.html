@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AutoSalon Voice Analytics Pro | ФРЕШ АВТО</title>
+    <title>COFRESH Voice Analytics | ФРЕШ АВТО</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8edf5 100%);
             color: #1a2a3a;
             min-height: 100vh;
         }
@@ -25,14 +25,13 @@
         }
         
         .navbar {
-            background: linear-gradient(135deg, #1a3a5c 0%, #0d2a4a 100%);
+            background: linear-gradient(135deg, #0a2a4a 0%, #0a2e5a 100%);
             border-radius: 50px;
             padding: 15px 30px;
             margin-bottom: 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            backdrop-filter: blur(10px);
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
         
@@ -46,11 +45,19 @@
             gap: 10px;
         }
         
-        .logo span:first-child {
-            background: white;
-            border-radius: 50%;
-            padding: 5px;
+        .logo-img {
             font-size: 1.8rem;
+        }
+        
+        .logo-text {
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        
+        .logo-text small {
+            font-size: 0.7rem;
+            font-weight: normal;
+            opacity: 0.9;
         }
         
         .logo:hover {
@@ -71,7 +78,7 @@
         
         .home-link:hover {
             background: #ffffff;
-            color: #1a3a5c;
+            color: #0a2a4a;
         }
         
         .header {
@@ -81,12 +88,27 @@
             background: white;
             border-radius: 30px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border: 1px solid rgba(26, 58, 92, 0.15);
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #1a6ba0, #3a8bc0, #1a6ba0);
         }
         
         .header h1 {
             font-size: 2.5rem;
-            color: #1a3a5c;
+            background: linear-gradient(135deg, #0a2a4a, #1a6ba0);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
             margin-bottom: 10px;
         }
         
@@ -98,22 +120,28 @@
         .company-badge {
             display: inline-block;
             margin-top: 15px;
-            padding: 8px 20px;
-            background: linear-gradient(135deg, #1a3a5c, #0d2a4a);
+            padding: 8px 25px;
+            background: linear-gradient(135deg, #0a2a4a, #1a6ba0);
             border-radius: 40px;
             color: white;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+        
+        .company-badge span {
+            font-size: 0.9rem;
         }
         
         .footer {
             text-align: center;
             margin-top: 50px;
             padding-top: 30px;
-            border-top: 1px solid rgba(26, 58, 92, 0.15);
+            border-top: 1px solid rgba(10, 42, 74, 0.1);
             color: #5a6e7c;
         }
         
         .footer a {
-            color: #1a3a5c;
+            color: #1a6ba0;
             text-decoration: none;
             font-weight: 600;
         }
@@ -127,26 +155,16 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        /* Общие стили для кнопок */
+        /* Общие стили */
         .btn-primary {
-            background: linear-gradient(135deg, #1a3a5c, #0d2a4a);
+            background: linear-gradient(135deg, #0a2a4a, #1a6ba0);
             color: white;
             border: none;
         }
         
         .btn-primary:hover {
-            background: linear-gradient(135deg, #244a6c, #1a3a5c);
+            background: linear-gradient(135deg, #1a3a5a, #2a7bb0);
             transform: translateY(-2px);
-        }
-        
-        .btn-secondary {
-            background: rgba(26, 58, 92, 0.1);
-            color: #1a3a5c;
-            border: 1px solid rgba(26, 58, 92, 0.3);
-        }
-        
-        .btn-secondary:hover {
-            background: rgba(26, 58, 92, 0.2);
         }
     </style>
     {% block extra_css %}{% endblock %}
@@ -155,7 +173,8 @@
     <div class="container">
         <nav class="navbar">
             <a href="/" class="logo">
-                <span>🚗</span> AutoSalon Analytics
+                <span class="logo-img">🚗</span>
+                <span class="logo-text">COFRESH<br><small>АВТО С ЗАБОТОЙ</small></span>
             </a>
             <a href="/" class="home-link">
                 <span>🏠</span> На главную
@@ -163,17 +182,17 @@
         </nav>
         
         <div class="header">
-            <h1>🚗 AutoSalon Voice Analytics Pro</h1>
+            <h1>COFRESH Voice Analytics Pro</h1>
             <p>AI-анализ качества телефонных разговоров по 8 критериям</p>
             <div class="company-badge">
-                ⭐ ООО ФРЭШ АВТО · ТОП-3 дилер РФ
+                ⭐ COFRESH · АВТО С ЗАБОТОЙ · ТОП-3 дилер РФ
             </div>
         </div>
         
         {% block content %}{% endblock %}
         
         <div class="footer">
-            <p>AutoSalon Voice Analytics Pro · 2026 · <a href="/">ФРЕШ АВТО</a></p>
+            <p>COFRESH Voice Analytics Pro · 2026 · <a href="/">АВТО С ЗАБОТОЙ</a></p>
             <p style="font-size: 0.8rem;">8 критериев: приветствие, сбор информации, стиль общения, выявление потребности, акции, решение, активное слушание, завершение</p>
         </div>
     </div>
