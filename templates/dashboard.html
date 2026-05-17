@@ -28,12 +28,12 @@
         left: 0;
         right: 0;
         height: 4px;
-        background: linear-gradient(90deg, #0a2a4a, #1a6ba0);
+        background: linear-gradient(90deg, #0a2a4a, #3a8bc0);
     }
     
     .dashboard-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(26, 107, 160, 0.15);
+        box-shadow: 0 8px 25px rgba(42, 123, 176, 0.15);
     }
     
     .dashboard-icon {
@@ -44,14 +44,14 @@
     .dashboard-value {
         font-size: 2.5rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #0a2a4a, #1a6ba0);
+        background: linear-gradient(135deg, #0a2a4a, #2a7bb0);
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
     }
     
     .dashboard-label {
-        color: #5a6e7c;
+        color: #4a6070;
         margin-top: 10px;
         font-weight: 500;
     }
@@ -64,7 +64,7 @@
     }
     
     .action-btn {
-        background: linear-gradient(135deg, #0a2a4a, #1a6ba0);
+        background: linear-gradient(135deg, #0a2a4a, #2a7bb0);
         color: white;
         padding: 20px;
         border-radius: 25px;
@@ -94,16 +94,16 @@
     
     .action-btn:hover {
         transform: translateY(-3px);
-        box-shadow: 0 5px 20px rgba(26, 107, 160, 0.4);
-        background: linear-gradient(135deg, #1a3a5a, #2a7bb0);
+        box-shadow: 0 5px 20px rgba(42, 123, 176, 0.4);
+        background: linear-gradient(135deg, #1a3a5a, #3a8bc0);
     }
     
     .action-btn-green {
-        background: linear-gradient(135deg, #2e7d32, #1b5e20);
+        background: linear-gradient(135deg, #1a5a2e, #0d3a1e);
     }
     
     .action-btn-green:hover {
-        background: linear-gradient(135deg, #3e8e42, #2e7d32);
+        background: linear-gradient(135deg, #2a6a3e, #1a4a2e);
     }
     
     .recent-analyses {
@@ -127,7 +127,7 @@
     }
     
     .analysis-item:hover {
-        background: rgba(26, 107, 160, 0.05);
+        background: rgba(42, 123, 176, 0.05);
     }
     
     .analysis-item:last-child {
@@ -140,13 +140,13 @@
     
     .analysis-date {
         font-size: 0.85rem;
-        color: #5a6e7c;
+        color: #4a6070;
         margin-bottom: 5px;
     }
     
     .analysis-filename {
         font-size: 0.9rem;
-        color: #1a6ba0;
+        color: #2a7bb0;
         font-weight: 500;
     }
     
@@ -157,12 +157,12 @@
     }
     
     .analysis-word-count {
-        color: #5a6e7c;
+        color: #4a6070;
         font-size: 0.9rem;
     }
     
     .analysis-score {
-        background: linear-gradient(135deg, #0a2a4a, #1a6ba0);
+        background: linear-gradient(135deg, #0a2a4a, #2a7bb0);
         color: white;
         padding: 5px 15px;
         border-radius: 20px;
@@ -178,17 +178,17 @@
     }
     
     .grade-excellent { background: #2e7d32; color: white; }
-    .grade-good { background: #1a6ba0; color: white; }
-    .grade-average { background: #ffc107; color: #333; }
-    .grade-poor { background: #f44336; color: white; }
-    .grade-fail { background: #b71c1c; color: white; }
+    .grade-good { background: #2a7bb0; color: white; }
+    .grade-average { background: #4a90b0; color: white; }
+    .grade-poor { background: #5a6e7c; color: white; }
+    .grade-fail { background: #4a5a6a; color: white; }
     
     .loading-spinner-small {
         display: inline-block;
         width: 20px;
         height: 20px;
-        border: 2px solid rgba(26, 107, 160, 0.2);
-        border-top-color: #1a6ba0;
+        border: 2px solid rgba(42, 123, 176, 0.2);
+        border-top-color: #2a7bb0;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
     }
@@ -198,11 +198,11 @@
     }
     
     .refresh-btn {
-        background: rgba(26, 107, 160, 0.1);
-        border: 1px solid rgba(26, 107, 160, 0.3);
+        background: rgba(42, 123, 176, 0.1);
+        border: 1px solid rgba(42, 123, 176, 0.3);
         padding: 5px 15px;
         border-radius: 20px;
-        color: #1a6ba0;
+        color: #2a7bb0;
         cursor: pointer;
         font-size: 0.8rem;
         margin-left: 15px;
@@ -210,7 +210,7 @@
     }
     
     .refresh-btn:hover {
-        background: rgba(26, 107, 160, 0.2);
+        background: rgba(42, 123, 176, 0.2);
     }
     
     .section-header {
@@ -221,7 +221,7 @@
     }
     
     .section-header h3 {
-        background: linear-gradient(135deg, #0a2a4a, #1a6ba0);
+        background: linear-gradient(135deg, #0a2a4a, #2a7bb0);
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
@@ -280,7 +280,7 @@
     <div id="recentList">
         <div style="text-align: center; padding: 20px;">
             <div class="loading-spinner-small"></div>
-            <p style="color: #5a6e7c; margin-top: 10px;">Загрузка анализов...</p>
+            <p style="color: #4a6070; margin-top: 10px;">Загрузка анализов...</p>
         </div>
     </div>
 </div>
@@ -353,13 +353,13 @@
                     `;
                 }).join('');
             } else {
-                container.innerHTML = '<p style="color: #5a6e7c; text-align: center; padding: 40px;">📭 Пока нет завершенных анализов</p>';
+                container.innerHTML = '<p style="color: #4a6070; text-align: center; padding: 40px;">📭 Пока нет завершенных анализов</p>';
             }
         } catch (error) {
             console.error('Error loading recent analyses:', error);
             const container = document.getElementById('recentList');
             if (container) {
-                container.innerHTML = '<p style="color: #f44336; text-align: center;">❌ Ошибка загрузки анализов</p>';
+                container.innerHTML = '<p style="color: #e74c3c; text-align: center;">❌ Ошибка загрузки анализов</p>';
             }
         }
     }
