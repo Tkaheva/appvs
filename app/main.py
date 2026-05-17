@@ -394,6 +394,8 @@ def init_database_tables(conn):
 @main_bp.route('/database-view')
 def database_view():
     """Страница просмотра базы данных"""
+    if not session.get('user'):
+        return redirect(url_for('auth.login'))
     return render_template('database_view.html')
 
 
