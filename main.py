@@ -651,64 +651,46 @@ def get_recent_analyses():
     """API для получения последних анализов"""
     recent = []
     
-    # Сначала пробуем получить из хранилища результатов
-    for file_id, result in list(analysis_results_store.items())[-10:]:
-        if result.get('success', False):
-            recent.append({
-                'file_id': file_id,
-                'total_score': result.get('total_score', 0),
-                'grade': result.get('grade', ''),
-                'analysis_time': result.get('analysis_time', ''),
-                'word_count': result.get('word_count', 0)
-            })
+    # Пробуем получить из БД (основной источник)
+    conn = get_db_connection()
+    if conn:
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT ar.*, uf.original_filename
+                    FROM analysis_results ar
+                    LEFT JOIN uploaded_files uf ON ar.file_id = uf.file_id
+                    ORDER BY ar.analysis_time DESC
+                    LIMIT 10
+                """)
+                db_recent = cursor.fetchall()
+                for item in db_recent:
+                    recent.append({
+                        'file_id': item.get('file_id', ''),
+                        'total_score': item.get('total_score', 0),
+                        'grade': item.get('grade', ''),
+                        'analysis_time': str(item.get('analysis_time', '')),
+                        'word_count': item.get('word_count', 0),
+                        'original_filename': item.get('original_filename', '')
+                    })
+                print(f"✅ Загружено {len(recent)} анализов из БД")
+        except Exception as e:
+            print(f"❌ Ошибка получения анализов из БД: {e}")
+        finally:
+            conn.close()
     
-    # Если в хранилище пусто, пробуем получить из БД
+    # Если в БД нет, пробуем получить из хранилища результатов
     if not recent:
-        conn = get_db_connection()
-        if conn:
-            try:
-                with conn.cursor() as cursor:
-                    cursor.execute("""
-                        SELECT ar.*, uf.original_filename
-                        FROM analysis_results ar
-                        LEFT JOIN uploaded_files uf ON ar.file_id = uf.file_id
-                        ORDER BY ar.analysis_time DESC
-                        LIMIT 10
-                    """)
-                    db_recent = cursor.fetchall()
-                    for item in db_recent:
-                        recent.append({
-                            'file_id': item.get('file_id', ''),
-                            'total_score': item.get('total_score', 0),
-                            'grade': item.get('grade', ''),
-                            'analysis_time': str(item.get('analysis_time', '')),
-                            'word_count': item.get('word_count', 0),
-                            'original_filename': item.get('original_filename', '')
-                        })
-                    print(f"✅ Загружено {len(recent)} анализов из БД")
-            except Exception as e:
-                print(f"❌ Ошибка получения анализов из БД: {e}")
-            finally:
-                conn.close()
-    
-    # Если всё равно пусто, вернуть тестовые данные для проверки
-    if not recent:
-        recent = [
-            {
-                'file_id': 'demo1',
-                'total_score': 85,
-                'grade': 'Хорошо',
-                'analysis_time': '2026-05-16 12:00:00',
-                'word_count': 450
-            },
-            {
-                'file_id': 'demo2',
-                'total_score': 72,
-                'grade': 'Средне',
-                'analysis_time': '2026-05-15 10:30:00',
-                'word_count': 380
-            }
-        ]
+        for file_id, result in list(analysis_results_store.items())[-10:]:
+            if result.get('success', False):
+                recent.append({
+                    'file_id': file_id,
+                    'total_score': result.get('total_score', 0),
+                    'grade': result.get('grade', ''),
+                    'analysis_time': result.get('analysis_time', ''),
+                    'word_count': result.get('word_count', 0)
+                })
+        print(f"✅ Загружено {len(recent)} анализов из хранилища")
     
     return jsonify({
         'success': True,
