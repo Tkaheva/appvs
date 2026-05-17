@@ -10,16 +10,18 @@
     }
     
     .dashboard-card {
-        background: rgba(19, 38, 52, 0.9);
+        background: white;
         border-radius: 25px;
         padding: 25px;
         text-align: center;
-        border: 1px solid rgba(255, 152, 0, 0.3);
-        transition: transform 0.3s;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        transition: transform 0.3s, box-shadow 0.3s;
+        border: 1px solid rgba(26, 58, 92, 0.1);
     }
     
     .dashboard-card:hover {
         transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(26, 58, 92, 0.15);
     }
     
     .dashboard-icon {
@@ -30,12 +32,13 @@
     .dashboard-value {
         font-size: 2.5rem;
         font-weight: 700;
-        color: #ff9800;
+        color: #1a3a5c;
     }
     
     .dashboard-label {
-        color: #b0c7e0;
+        color: #5a6e7c;
         margin-top: 10px;
+        font-weight: 500;
     }
     
     .quick-actions {
@@ -46,27 +49,38 @@
     }
     
     .action-btn {
-        background: linear-gradient(95deg, #ff9800, #f4511e);
+        background: linear-gradient(135deg, #1a3a5c, #0d2a4a);
         color: white;
         padding: 20px;
         border-radius: 25px;
         text-align: center;
         text-decoration: none;
-        transition: transform 0.3s;
+        transition: all 0.3s;
         display: block;
+        font-weight: 600;
     }
     
     .action-btn:hover {
         transform: translateY(-3px);
-        box-shadow: 0 5px 20px rgba(255, 152, 0, 0.4);
+        box-shadow: 0 5px 20px rgba(26, 58, 92, 0.3);
+        background: linear-gradient(135deg, #244a6c, #1a3a5c);
+    }
+    
+    .action-btn-green {
+        background: linear-gradient(135deg, #2e7d32, #1b5e20);
+    }
+    
+    .action-btn-green:hover {
+        background: linear-gradient(135deg, #3e8e42, #2e7d32);
     }
     
     .recent-analyses {
-        background: rgba(19, 38, 52, 0.9);
+        background: white;
         border-radius: 25px;
         padding: 25px;
         margin-top: 30px;
-        border: 1px solid rgba(255, 152, 0, 0.3);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(26, 58, 92, 0.1);
     }
     
     .analysis-item {
@@ -74,13 +88,14 @@
         justify-content: space-between;
         align-items: center;
         padding: 15px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid rgba(26, 58, 92, 0.1);
         cursor: pointer;
         transition: background 0.3s;
+        border-radius: 15px;
     }
     
     .analysis-item:hover {
-        background: rgba(255, 152, 0, 0.1);
+        background: rgba(26, 58, 92, 0.05);
     }
     
     .analysis-item:last-child {
@@ -93,13 +108,14 @@
     
     .analysis-date {
         font-size: 0.85rem;
-        color: #b0c7e0;
+        color: #5a6e7c;
         margin-bottom: 5px;
     }
     
     .analysis-filename {
         font-size: 0.9rem;
-        color: #ffcc80;
+        color: #1a3a5c;
+        font-weight: 500;
     }
     
     .analysis-stats {
@@ -109,12 +125,13 @@
     }
     
     .analysis-word-count {
-        color: #b0c7e0;
+        color: #5a6e7c;
         font-size: 0.9rem;
     }
     
     .analysis-score {
-        background: #ff9800;
+        background: #1a3a5c;
+        color: white;
         padding: 5px 15px;
         border-radius: 20px;
         font-weight: bold;
@@ -128,18 +145,18 @@
         font-weight: bold;
     }
     
-    .grade-excellent { background: #2e7d32; }
-    .grade-good { background: #ff9800; }
+    .grade-excellent { background: #2e7d32; color: white; }
+    .grade-good { background: #1a3a5c; color: white; }
     .grade-average { background: #ffc107; color: #333; }
-    .grade-poor { background: #f44336; }
-    .grade-fail { background: #b71c1c; }
+    .grade-poor { background: #f44336; color: white; }
+    .grade-fail { background: #b71c1c; color: white; }
     
     .loading-spinner-small {
         display: inline-block;
         width: 20px;
         height: 20px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-top-color: #ff9800;
+        border: 2px solid rgba(26, 58, 92, 0.2);
+        border-top-color: #1a3a5c;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
     }
@@ -149,18 +166,19 @@
     }
     
     .refresh-btn {
-        background: rgba(33, 150, 243, 0.2);
-        border: 1px solid #2196f3;
+        background: rgba(26, 58, 92, 0.1);
+        border: 1px solid rgba(26, 58, 92, 0.3);
         padding: 5px 15px;
         border-radius: 20px;
-        color: white;
+        color: #1a3a5c;
         cursor: pointer;
         font-size: 0.8rem;
         margin-left: 15px;
+        transition: all 0.3s;
     }
     
     .refresh-btn:hover {
-        background: #2196f3;
+        background: rgba(26, 58, 92, 0.2);
     }
     
     .section-header {
@@ -168,6 +186,14 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 20px;
+    }
+    
+    .section-header h3 {
+        color: #1a3a5c;
+    }
+    
+    h3 {
+        color: #1a3a5c;
     }
 </style>
 {% endblock %}
@@ -206,20 +232,20 @@
     <a href="/database-view" target="_blank" class="action-btn">
         🗄️ База данных
     </a>
-    <a href="/" class="action-btn" style="background: linear-gradient(95deg, #2e7d32, #1b5e20);">
+    <a href="/" class="action-btn action-btn-green">
         🏠 На главную
     </a>
 </div>
 
 <div class="recent-analyses">
     <div class="section-header">
-        <h3 style="color: #ffcc80; margin: 0;">📊 Последние анализы</h3>
+        <h3>📊 Последние анализы</h3>
         <button class="refresh-btn" onclick="loadRecentAnalyses()">🔄 Обновить</button>
     </div>
     <div id="recentList">
         <div style="text-align: center; padding: 20px;">
             <div class="loading-spinner-small"></div>
-            <p style="color: #b0c7e0; margin-top: 10px;">Загрузка анализов...</p>
+            <p style="color: #5a6e7c; margin-top: 10px;">Загрузка анализов...</p>
         </div>
     </div>
 </div>
@@ -241,7 +267,6 @@
         }
     }
     
-    // Загрузка последних анализов
     async function loadRecentAnalyses() {
         try {
             const response = await fetch('/api/recent-analyses');
@@ -252,7 +277,6 @@
             
             if (data.success && data.analyses && data.analyses.length > 0) {
                 container.innerHTML = data.analyses.map(analysis => {
-                    // Форматирование даты
                     let dateStr = 'Дата неизвестна';
                     if (analysis.analysis_time) {
                         try {
@@ -269,7 +293,6 @@
                         }
                     }
                     
-                    // Определение класса оценки
                     let gradeClass = '';
                     const score = analysis.total_score || 0;
                     if (score >= 90) gradeClass = 'grade-excellent';
@@ -295,7 +318,7 @@
                     `;
                 }).join('');
             } else {
-                container.innerHTML = '<p style="color: #b0c7e0; text-align: center; padding: 40px;">📭 Пока нет завершенных анализов</p>';
+                container.innerHTML = '<p style="color: #5a6e7c; text-align: center; padding: 40px;">📭 Пока нет завершенных анализов</p>';
             }
         } catch (error) {
             console.error('Error loading recent analyses:', error);
@@ -306,14 +329,12 @@
         }
     }
     
-    // Просмотр деталей анализа
     function viewAnalysisDetails(fileId) {
         if (fileId) {
             window.open(`/analysis-result/${fileId}`, '_blank');
         }
     }
     
-    // Функция для экранирования HTML
     function escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -321,16 +342,12 @@
         return div.innerHTML;
     }
     
-    // Вызвать функции при загрузке страницы
     document.addEventListener('DOMContentLoaded', function() {
         loadStats();
         loadRecentAnalyses();
     });
     
-    // Обновление статистики каждые 10 секунд
     setInterval(loadStats, 10000);
-    
-    // Обновление списка анализов каждые 30 секунд
     setInterval(loadRecentAnalyses, 30000);
 </script>
 {% endblock %}
