@@ -64,7 +64,13 @@
             opacity: 0.9;
         }
         
-        .home-link {
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .nav-link {
             background: rgba(255, 255, 255, 0.15);
             padding: 8px 20px;
             border-radius: 40px;
@@ -76,9 +82,36 @@
             gap: 8px;
         }
         
-        .home-link:hover {
+        .nav-link:hover {
             background: #ffffff;
             color: #0a2a4a;
+        }
+        
+        .user-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 20px;
+            border-radius: 40px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .logout-link {
+            background: rgba(231, 76, 60, 0.8);
+            padding: 8px 20px;
+            border-radius: 40px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .logout-link:hover {
+            background: #e74c3c;
         }
         
         .header {
@@ -156,7 +189,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        /* Общие стили */
         .btn-primary {
             background: linear-gradient(135deg, #0a2a4a, #2a7bb0);
             color: white;
@@ -177,9 +209,29 @@
                 <span class="logo-img">🚗</span>
                 <span class="logo-text">COFRESH<br><small>АВТО С ЗАБОТОЙ</small></span>
             </a>
-            <a href="/" class="home-link">
-                <span>🏠</span> На главную
-            </a>
+            <div class="nav-links">
+                {% if session.user %}
+                <a href="/dashboard" class="nav-link">
+                    <span>📊</span> Дашборд
+                </a>
+                <a href="/" class="nav-link">
+                    <span>🏠</span> Главная
+                </a>
+                <div class="user-info">
+                    <span>👤</span> {{ session.user.full_name }}
+                </div>
+                <a href="/logout" class="logout-link">
+                    <span>🚪</span> Выход
+                </a>
+                {% else %}
+                <a href="/login" class="nav-link">
+                    <span>🔐</span> Вход
+                </a>
+                <a href="/" class="nav-link">
+                    <span>🏠</span> Главная
+                </a>
+                {% endif %}
+            </div>
         </nav>
         
         <div class="header">
