@@ -27,35 +27,38 @@
         .navbar {
             background: linear-gradient(135deg, #0a2a4a 0%, #0a2e5a 100%);
             border-radius: 50px;
-            padding: 15px 30px;
+            padding: 12px 25px;
             margin-bottom: 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
         
         .logo {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             font-weight: bold;
             color: #ffffff;
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
         
         .logo-img {
-            font-size: 1.8rem;
+            font-size: 1.6rem;
         }
         
         .logo-text {
             font-weight: 700;
             letter-spacing: 1px;
+            font-size: 1.1rem;
         }
         
         .logo-text small {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: normal;
             opacity: 0.9;
         }
@@ -64,15 +67,16 @@
             opacity: 0.9;
         }
         
-        .nav-links {
+        .nav-menu {
             display: flex;
-            gap: 15px;
+            gap: 10px;
             align-items: center;
+            flex-wrap: wrap;
         }
         
         .nav-link {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.12);
+            padding: 8px 18px;
             border-radius: 40px;
             color: white;
             text-decoration: none;
@@ -80,27 +84,36 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
         }
         
         .nav-link:hover {
             background: #ffffff;
             color: #0a2a4a;
+            transform: translateY(-2px);
+        }
+        
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.5);
         }
         
         .user-info {
             background: rgba(255, 255, 255, 0.1);
-            padding: 8px 20px;
+            padding: 6px 15px;
             border-radius: 40px;
             color: white;
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            margin-left: 5px;
         }
         
         .logout-link {
             background: rgba(231, 76, 60, 0.8);
-            padding: 8px 20px;
+            padding: 6px 15px;
             border-radius: 40px;
             color: white;
             text-decoration: none;
@@ -108,10 +121,12 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            font-size: 0.85rem;
         }
         
         .logout-link:hover {
             background: #e74c3c;
+            transform: translateY(-2px);
         }
         
         .header {
@@ -161,10 +176,6 @@
             letter-spacing: 1px;
         }
         
-        .company-badge span {
-            font-size: 0.9rem;
-        }
-        
         .footer {
             text-align: center;
             margin-top: 50px;
@@ -189,15 +200,20 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        .btn-primary {
-            background: linear-gradient(135deg, #0a2a4a, #2a7bb0);
-            color: white;
-            border: none;
-        }
-        
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #1a3a5a, #3a8bc0);
-            transform: translateY(-2px);
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                border-radius: 25px;
+                padding: 15px;
+            }
+            
+            .nav-menu {
+                justify-content: center;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
         }
     </style>
     {% block extra_css %}{% endblock %}
@@ -209,14 +225,17 @@
                 <span class="logo-img">🚗</span>
                 <span class="logo-text">COFRESH<br><small>АВТО С ЗАБОТОЙ</small></span>
             </a>
-            <div class="nav-links">
-                {% if session.user %}
-                <a href="/dashboard" class="nav-link">
+            <div class="nav-menu">
+                <a href="/dashboard" class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
                     <span>📊</span> Дашборд
                 </a>
-                <a href="/" class="nav-link">
-                    <span>🏠</span> Главная
+                <a href="/database-view" class="nav-link {% if request.endpoint == 'main.database_view' %}active{% endif %}">
+                    <span>🗄️</span> База данных
                 </a>
+                <a href="/health" class="nav-link {% if request.endpoint == 'health' %}active{% endif %}">
+                    <span>💚</span> Health Check
+                </a>
+                {% if session.user %}
                 <div class="user-info">
                     <span>👤</span> {{ session.user.full_name }}
                 </div>
@@ -224,11 +243,8 @@
                     <span>🚪</span> Выход
                 </a>
                 {% else %}
-                <a href="/login" class="nav-link">
+                <a href="/login" class="nav-link {% if request.endpoint == 'auth.login' %}active{% endif %}">
                     <span>🔐</span> Вход
-                </a>
-                <a href="/" class="nav-link">
-                    <span>🏠</span> Главная
                 </a>
                 {% endif %}
             </div>
