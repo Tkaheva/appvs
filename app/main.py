@@ -1,4 +1,4 @@
-﻿# app/main.py - ПОЛНАЯ ВЕРСИЯ
+﻿# app/main.py - ПОЛНАЯ ВЕРСИЯ С МАРШРУТАМИ ДЛЯ ОТЧЁТОВ И ОБУЧЕНИЯ
 
 import os
 import uuid
@@ -10,6 +10,7 @@ from flask import Blueprint, request, jsonify, render_template, session, send_fi
 from werkzeug.utils import secure_filename
 from app.audio_processor import AudioProcessor
 from app.analyzer import analyze_audio_result, CRITERIA
+from app.auth import login_required
 
 main_bp = Blueprint('main', __name__)
 audio_processor = AudioProcessor()
@@ -314,7 +315,7 @@ def init_database_tables(conn):
                     email VARCHAR(100) UNIQUE NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
                     full_name VARCHAR(100),
-                    role ENUM('admin', 'manager', 'analyst') DEFAULT 'analyst',
+                    role ENUM('admin', 'supervisor', 'manager') DEFAULT 'manager',
                     is_active BOOLEAN DEFAULT TRUE,
                     last_login TIMESTAMP NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -377,9 +378,18 @@ def init_database_tables(conn):
                 )
             """)
             
+            # Добавляем тестовых пользователей с разными ролями
             cursor.execute("""
-                INSERT IGNORE INTO users (username, email, password_hash, full_name, role) 
-                VALUES ('admin', 'admin@autosalon.local', 'admin123', 'Администратор', 'admin')
+                INSERT IGNORE INTO users (id, username, email, password_hash, full_name, role) 
+                VALUES (1, 'admin', 'admin@autosalon.local', 'admin123', 'Администратор системы', 'admin')
+            """)
+            cursor.execute("""
+                INSERT IGNORE INTO users (id, username, email, password_hash, full_name, role) 
+                VALUES (2, 'supervisor', 'supervisor@autosalon.local', 'super123', 'Руководитель отдела продаж', 'supervisor')
+            """)
+            cursor.execute("""
+                INSERT IGNORE INTO users (id, username, email, password_hash, full_name, role) 
+                VALUES (3, 'manager', 'manager@autosalon.local', 'manager123', 'Менеджер по продажам', 'manager')
             """)
             
             conn.commit()
@@ -392,14 +402,14 @@ def init_database_tables(conn):
 # ==================== API ДЛЯ ПРОСМОТРА БАЗЫ ДАННЫХ ====================
 
 @main_bp.route('/database-view')
+@login_required(roles=['admin', 'supervisor'])
 def database_view():
-    """Страница просмотра базы данных"""
-    if not session.get('user'):
-        return redirect(url_for('auth.login'))
+    """Страница просмотра базы данных (только для admin и supervisor)"""
     return render_template('database_view.html')
 
 
 @main_bp.route('/api/database/stats')
+@login_required(roles=['admin', 'supervisor'])
 def api_db_stats():
     """API для получения статистики"""
     conn = get_db_connection()
@@ -436,6 +446,7 @@ def api_db_stats():
 
 
 @main_bp.route('/api/database/files')
+@login_required(roles=['admin', 'supervisor'])
 def api_db_files():
     """API для получения списка файлов"""
     conn = get_db_connection()
@@ -463,6 +474,7 @@ def api_db_files():
 
 
 @main_bp.route('/api/database/analyses')
+@login_required(roles=['admin', 'supervisor'])
 def api_db_analyses():
     """API для получения списка анализов"""
     conn = get_db_connection()
@@ -492,6 +504,7 @@ def api_db_analyses():
 
 
 @main_bp.route('/api/database/criteria')
+@login_required(roles=['admin', 'supervisor'])
 def api_db_criteria():
     """API для получения оценок критериев"""
     conn = get_db_connection()
@@ -517,6 +530,7 @@ def api_db_criteria():
 
 
 @main_bp.route('/api/database/segments')
+@login_required(roles=['admin', 'supervisor'])
 def api_db_segments():
     """API для получения сегментов диалога"""
     conn = get_db_connection()
@@ -542,8 +556,9 @@ def api_db_segments():
 
 
 @main_bp.route('/api/database/users')
+@login_required(roles=['admin'])
 def api_db_users():
-    """API для получения списка пользователей"""
+    """API для получения списка пользователей (только admin)"""
     conn = get_db_connection()
     if not conn:
         return jsonify({'success': False, 'error': 'Не удалось подключиться к БД'})
@@ -578,8 +593,9 @@ def analysis_result_view(file_id):
 
 
 @main_bp.route('/analysis-details/<int:analysis_id>')
+@login_required(roles=['admin', 'supervisor'])
 def analysis_details_view(analysis_id):
-    """Страница деталей анализа по ID"""
+    """Страница деталей анализа по ID (только admin и supervisor)"""
     conn = get_db_connection()
     if not conn:
         return render_template('error.html', error='Не удалось подключиться к БД')
@@ -707,3 +723,148 @@ def get_criteria():
         'success': True,
         'criteria': CRITERIA
     })
+
+
+# ==================== НОВЫЕ МАРШРУТЫ ДЛЯ ОТЧЁТОВ И ОБУЧЕНИЯ ====================
+
+@main_bp.route('/api/analysis/<file_id>/training-plan')
+@login_required(roles=['admin', 'supervisor', 'manager'])
+def get_analysis_training_plan(file_id):
+    """Получение плана обучения на основе анализа"""
+    from app.models import TrainingPlan
+    from app.reports import training_plans_store
+    
+    result = analysis_results_store.get(file_id)
+    if not result:
+        return jsonify({'error': 'Анализ не найден'}), 404
+    
+    user_id = session.get('user', {}).get('id')
+    if not user_id:
+        user_id = 1  # default для теста
+    
+    plan_key = f"plan_{user_id}_{file_id}"
+    
+    if plan_key not in training_plans_store:
+        training_plan = TrainingPlan().generate_from_analysis(result, user_id)
+        training_plans_store[plan_key] = training_plan.to_dict()
+    
+    return jsonify({
+        'success': True,
+        'training_plan': training_plans_store[plan_key]
+    })
+
+
+@main_bp.route('/reports')
+@login_required(roles=['admin', 'supervisor'])
+def reports_page():
+    """Страница отчётов (только для admin и supervisor)"""
+    return render_template('reports.html', user=session.get('user', {}))
+
+
+@main_bp.route('/training')
+@login_required(roles=['admin', 'supervisor', 'manager'])
+def training_page():
+    """Страница планов обучения (доступна всем авторизованным)"""
+    return render_template('training.html', user=session.get('user', {}))
+
+
+@main_bp.route('/api/users/list')
+@login_required(roles=['admin', 'supervisor'])
+def get_users_list():
+    """Получение списка пользователей (для назначения обучения)"""
+    from app.auth import USERS_DB
+    
+    current_user_role = session.get('user', {}).get('role', 'manager')
+    users = []
+    
+    for username, user_data in USERS_DB.items():
+        # Supervisor не видит admin
+        if current_user_role == 'supervisor' and user_data['role'] == 'admin':
+            continue
+        users.append({
+            'id': user_data['id'],
+            'username': user_data['username'],
+            'full_name': user_data['full_name'],
+            'role': user_data['role'],
+            'department': user_data.get('department', '')
+        })
+    
+    return jsonify({'success': True, 'users': users})
+
+
+@main_bp.route('/api/my-analyses')
+@login_required(roles=['admin', 'supervisor', 'manager'])
+def get_my_analyses():
+    """Получение анализов для текущего пользователя"""
+    user_role = session.get('user', {}).get('role', 'manager')
+    user_id = session.get('user', {}).get('id')
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Нет соединения с БД'})
+    
+    try:
+        with conn.cursor() as cursor:
+            if user_role == 'admin':
+                # Admin видит всё
+                cursor.execute("""
+                    SELECT ar.*, uf.original_filename, uf.user_id
+                    FROM analysis_results ar
+                    LEFT JOIN uploaded_files uf ON ar.file_id = uf.file_id
+                    ORDER BY ar.analysis_time DESC
+                    LIMIT 50
+                """)
+            elif user_role == 'supervisor':
+                # Supervisor видит все анализы команды
+                cursor.execute("""
+                    SELECT ar.*, uf.original_filename, uf.user_id
+                    FROM analysis_results ar
+                    LEFT JOIN uploaded_files uf ON ar.file_id = uf.file_id
+                    ORDER BY ar.analysis_time DESC
+                    LIMIT 50
+                """)
+            else:
+                # Manager видит только свои анализы
+                cursor.execute("""
+                    SELECT ar.*, uf.original_filename, uf.user_id
+                    FROM analysis_results ar
+                    LEFT JOIN uploaded_files uf ON ar.file_id = uf.file_id
+                    WHERE uf.user_id = %s OR uf.user_id IS NULL
+                    ORDER BY ar.analysis_time DESC
+                    LIMIT 50
+                """, (user_id,))
+            
+            analyses = cursor.fetchall()
+            for analysis in analyses:
+                if analysis.get('analysis_time'):
+                    analysis['analysis_time'] = str(analysis['analysis_time'])
+            
+            return jsonify({'success': True, 'analyses': analyses})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+    finally:
+        conn.close()
+
+
+@main_bp.route('/download/<file_id>')
+@login_required(roles=['admin', 'supervisor', 'manager'])
+def download_report(file_id):
+    """Скачивание отчёта в HTML формате"""
+    result = analysis_results_store.get(file_id)
+    if not result:
+        return jsonify({'error': 'Результат не найден'}), 404
+    
+    from app.models import ReportGenerator
+    
+    user_info = session.get('user', {})
+    
+    # Получение плана обучения
+    from app.models import TrainingPlan
+    from app.reports import training_plans_store
+    
+    user_id = user_info.get('id', 1)
+    plan_key = f"plan_{user_id}_{file_id}"
+    training_plan = training_plans_store.get(plan_key)
+    
+    html = ReportGenerator.generate_html_report(result, user_info, training_plan)
+    return html
