@@ -1,0 +1,484 @@
+﻿{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .course-container {
+        background: rgba(19, 38, 52, 0.9);
+        border-radius: 30px;
+        padding: 25px;
+        margin-top: 20px;
+    }
+    
+    .course-header {
+        background: linear-gradient(135deg, #0a2a4a, #2a7bb0);
+        border-radius: 20px;
+        padding: 25px;
+        margin-bottom: 25px;
+        color: white;
+    }
+    
+    .course-progress {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        padding: 15px;
+        margin-top: 15px;
+    }
+    
+    .progress-bar-large {
+        height: 12px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .progress-fill-large {
+        height: 100%;
+        background: #ff9800;
+        border-radius: 10px;
+        transition: width 0.5s;
+    }
+    
+    .area-card {
+        background: rgba(13, 28, 41, 0.8);
+        border-radius: 20px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-left: 5px solid #f44336;
+    }
+    
+    .module-card {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        padding: 15px;
+        margin: 15px 0;
+        transition: transform 0.3s;
+    }
+    
+    .module-card:hover {
+        transform: translateX(5px);
+    }
+    
+    .module-status {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+    }
+    
+    .status-pending { background: #9e9e9e; color: white; }
+    .status-in_progress { background: #ff9800; color: white; }
+    .status-completed { background: #4caf50; color: white; }
+    
+    .deadline-badge {
+        background: #f44336;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+    }
+    
+    .deadline-urgent {
+        background: #ff5722;
+        animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+    
+    .content-list {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 10px;
+        padding: 10px 15px;
+        margin: 10px 0;
+    }
+    
+    .homework-area {
+        background: rgba(255, 152, 0, 0.1);
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 10px;
+    }
+    
+    .certificate-card {
+        background: linear-gradient(135deg, #1a3a5a, #0a2a4a);
+        border-radius: 20px;
+        padding: 30px;
+        text-align: center;
+        margin-top: 30px;
+    }
+    
+    .certificate-icon {
+        font-size: 3rem;
+        margin-bottom: 15px;
+    }
+    
+    .btn-gold {
+        background: linear-gradient(135deg, #ffd700, #ff8c00);
+        color: #1a2a3a;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 40px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .btn-gold:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+    }
+    
+    .test-section {
+        background: rgba(33, 150, 243, 0.1);
+        border-radius: 20px;
+        padding: 20px;
+        margin-top: 30px;
+    }
+    
+    .test-question {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="course-container">
+    <div class="course-header">
+        <h2 style="color: #ffcc80;">🎓 Персональный курс обучения</h2>
+        <p>Автоматически сформирован на основе анализа ваших телефонных разговоров</p>
+    </div>
+    
+    <div id="courseContent">
+        <div style="text-align: center; padding: 40px;">
+            <div class="loading-spinner"></div>
+            <p>Загрузка курса обучения...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentCourseKey = null;
+    
+    async function loadExtendedCourse() {
+        try {
+            // Сначала получаем список доступных курсов
+            const response = await fetch('/api/my-training-plan');
+            const data = await response.json();
+            
+            if (data.success && data.plans && data.plans.length > 0) {
+                // Для демонстрации используем первый курс
+                const plan = data.plans[0];
+                if (plan.file_id) {
+                    await generateCourseForFile(plan.file_id);
+                } else {
+                    showNoCourseMessage();
+                }
+            } else {
+                showNoCourseMessage();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNoCourseMessage();
+        }
+    }
+    
+    async function generateCourseForFile(fileId) {
+        try {
+            const response = await fetch(`/api/extended-course/generate/${fileId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ manager_name: '{{ session.user.full_name }}' })
+            });
+            const data = await response.json();
+            
+            if (data.success && data.extended_course) {
+                currentCourseKey = data.extended_course.course_key || `ext_course_${data.extended_course.user_id}_${fileId}`;
+                displayCourse(data.extended_course);
+            } else {
+                showNoCourseMessage();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNoCourseMessage();
+        }
+    }
+    
+    function displayCourse(course) {
+        const container = document.getElementById('courseContent');
+        const progressPercent = (course.completed_modules / course.total_modules * 100) || 0;
+        
+        container.innerHTML = `
+            <div class="course-header">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                    <div>
+                        <h3>👨‍💼 Сотрудник: ${escapeHtml(course.manager_name)}</h3>
+                        <p>📅 Начало курса: ${formatDate(course.start_date)}</p>
+                        <p>📅 Окончание курса: ${formatDate(course.end_date)}</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 2rem; font-weight: bold; color: #ff9800;">${course.days_remaining}</div>
+                        <div>дней до окончания</div>
+                    </div>
+                </div>
+                <div class="course-progress">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span>📊 Общий прогресс</span>
+                        <span>${course.completed_modules}/${course.total_modules} модулей</span>
+                    </div>
+                    <div class="progress-bar-large">
+                        <div class="progress-fill-large" style="width: ${progressPercent}%;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            ${course.weak_areas.map(area => {
+                const courseData = getCourseDataForArea(area.id);
+                if (!courseData) return '';
+                
+                const isUrgent = area.score < 40;
+                
+                return `
+                    <div class="area-card" style="border-left-color: ${isUrgent ? '#f44336' : '#ff9800'};">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
+                            <div>
+                                <h3 style="color: #ffcc80;">${courseData.icon} ${courseData.name}</h3>
+                                <p>Текущий балл: <strong style="color: ${isUrgent ? '#f44336' : '#ff9800'}">${area.score}/100</strong> → Цель: ${area.required_score}/100</p>
+                            </div>
+                            ${isUrgent ? '<span class="deadline-badge deadline-urgent">⚠️ КРИТИЧЕСКИ ВАЖНО</span>' : ''}
+                        </div>
+                        
+                        ${courseData.modules.map(module => {
+                            const moduleKey = `${area.id}_${module.title}`;
+                            const progress = course.progress[moduleKey] || { status: 'pending' };
+                            const isOverdue = checkOverdue(course.start_date, module.deadline_days);
+                            
+                            return `
+                                <div class="module-card">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+                                        <strong>${module.title}</strong>
+                                        <div>
+                                            <span class="module-status status-${progress.status}">
+                                                ${getStatusText(progress.status)}
+                                            </span>
+                                            ${isOverdue && progress.status !== 'completed' ? '<span class="deadline-badge" style="margin-left: 10px;">⏰ ПРОСРОЧЕНО</span>' : ''}
+                                        </div>
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: #b0c7e0; margin-bottom: 10px;">
+                                        ⏱️ Длительность: ${module.duration_hours} часов | 📅 Дедлайн: ${module.deadline_days} дней
+                                    </div>
+                                    <div class="content-list">
+                                        <strong>📚 Содержание модуля:</strong>
+                                        <ul style="margin: 8px 0 0 20px;">
+                                            ${module.content.map(c => `<li>${escapeHtml(c)}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                    <div class="homework-area">
+                                        <strong>📝 Домашнее задание:</strong>
+                                        <p style="margin-top: 5px;">${escapeHtml(module.homework)}</p>
+                                        ${progress.homework_submitted ? 
+                                            `<div style="margin-top: 10px; color: #4caf50;">✅ Домашнее задание отправлено на проверку</div>` :
+                                            `<button class="btn" style="background: #ff9800; margin-top: 10px; padding: 8px 20px;" onclick="markHomeworkSubmitted('${moduleKey}')">
+                                                📤 Отправить домашнее задание
+                                            </button>`
+                                        }
+                                        ${progress.status !== 'completed' && progress.homework_submitted ?
+                                            `<button class="btn" style="background: #2196f3; margin-top: 10px; margin-left: 10px; padding: 8px 20px;" onclick="markModuleCompleted('${moduleKey}')">
+                                                ✅ Завершить модуль
+                                            </button>` : ''
+                                        }
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }).join('')}
+            
+            <div class="test-section">
+                <h4 style="color: #ffcc80;">📋 ИТОГОВАЯ АТТЕСТАЦИЯ</h4>
+                <p>После завершения всех модулей необходимо сдать итоговый тест.</p>
+                
+                <div class="test-question">
+                    <strong>Вопрос 1:</strong> Как правильно представиться при входящем звонке?
+                </div>
+                <div class="test-question">
+                    <strong>Вопрос 2:</strong> Назовите 3 техники активного слушания.
+                </div>
+                <div class="test-question">
+                    <strong>Вопрос 3:</strong> Как правильно отработать возражение "дорого"?
+                </div>
+                <div class="test-question">
+                    <strong>Вопрос 4:</strong> Что такое SPIN-продажи и как их применять?
+                </div>
+                <div class="test-question">
+                    <strong>Вопрос 5:</strong> Какие 5 обязательных вопросов нужно задать клиенту?
+                </div>
+            </div>
+            
+            ${course.certificate_issued ? `
+                <div class="certificate-card">
+                    <div class="certificate-icon">🏆</div>
+                    <h3 style="color: #ffd700;">Сертификат об окончании курса</h3>
+                    <p>${escapeHtml(course.manager_name)} успешно завершил(а) курс обучения</p>
+                    <button class="btn-gold" onclick="downloadCertificate()">📜 Скачать сертификат</button>
+                </div>
+            ` : ''}
+        `;
+    }
+    
+    async function markModuleCompleted(moduleKey) {
+        if (!currentCourseKey) return;
+        
+        try {
+            const response = await fetch(`/api/extended-course/${currentCourseKey}/progress`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ module_key: moduleKey, status: 'completed' })
+            });
+            const data = await response.json();
+            if (data.success) {
+                displayCourse(data.extended_course);
+                showMessage('Модуль завершен!', 'success');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Ошибка при завершении модуля', 'error');
+        }
+    }
+    
+    async function markHomeworkSubmitted(moduleKey) {
+        if (!currentCourseKey) return;
+        
+        try {
+            const response = await fetch(`/api/extended-course/${currentCourseKey}/homework-submit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    module_key: moduleKey, 
+                    homework_file: 'homework_submitted_' + new Date().toISOString()
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                displayCourse(data.extended_course);
+                showMessage('Домашнее задание отправлено на проверку!', 'success');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Ошибка при отправке задания', 'error');
+        }
+    }
+    
+    function getCourseDataForArea(areaId) {
+        const courses = {
+            'greeting': { name: 'Приветствие и представление', icon: '👋', modules: [
+                { title: 'Стандарты приветствия в автосалоне', duration_hours: 2, deadline_days: 2, content: ['Правильное произношение названия компании', 'Стандартная фраза приветствия', 'Тон и интонация'] },
+                { title: 'Активное слушание в начале разговора', duration_hours: 1.5, deadline_days: 3, content: ['Как правильно уточнить имя клиента', 'Техники запоминания имени', 'Использование имени клиента'] }
+            ]},
+            'client_info': { name: 'Сбор информации о клиенте', icon: '📝', modules: [
+                { title: 'Чек-лист сбора информации', duration_hours: 2, deadline_days: 3, content: ['Бюджет клиента', 'Предпочитаемая марка', 'Сроки покупки', 'Способ оплаты'] },
+                { title: 'Техника открытых вопросов', duration_hours: 2.5, deadline_days: 5, content: ['Отличие открытых вопросов', 'Примеры для автосалона', 'Практика вопросов'] },
+                { title: 'Методика SPIN-продаж', duration_hours: 3, deadline_days: 7, content: ['Ситуационные вопросы', 'Проблемные вопросы', 'Извлекающие вопросы', 'Направляющие вопросы'] }
+            ]},
+            'communication_style': { name: 'Стиль общения', icon: '💬', modules: [
+                { title: 'Профессиональная лексика', duration_hours: 1.5, deadline_days: 2, content: ['Слова-паразиты', 'Профессиональные термины', 'Вежливые формы'] },
+                { title: 'Техники активного слушания', duration_hours: 2, deadline_days: 4, content: ['Эхо-техника', 'Вербализация', 'Резюмирование', 'Эмпатия'] }
+            ]},
+            'problem_identification': { name: 'Выявление потребности', icon: '🎯', modules: [
+                { title: 'Типы клиентов', duration_hours: 2, deadline_days: 3, content: ['Клиент-новичок', 'Опытный автовладелец', 'Корпоративный клиент'] },
+                { title: 'Техника выявления болевых точек', duration_hours: 2.5, deadline_days: 5, content: ['Вопросы о текущем авто', 'Потребности семьи', 'Комфорт и безопасность'] },
+                { title: 'Работа с возражениями', duration_hours: 3, deadline_days: 7, content: ['Классификация возражений', 'Методика согласие-аргумент', 'Топ-10 возражений'] }
+            ]},
+            'offers_promotions': { name: 'Рассказ об акциях', icon: '🏷️', modules: [
+                { title: 'Актуальные акции', duration_hours: 1.5, deadline_days: 2, content: ['Изучение текущих акций', 'Сезонные предложения', 'Кредитные программы'] },
+                { title: 'Техника презентации выгоды', duration_hours: 2, deadline_days: 4, content: ['Перевод цены в выгоду', 'Сравнение с конкурентами', 'Подсчёт экономии'] }
+            ]},
+            'solution_proposal': { name: 'Предложение решения', icon: '💡', modules: [
+                { title: 'Подбор автомобиля', duration_hours: 2, deadline_days: 3, content: ['Соотнесение бюджета', 'Учет пожеланий', 'Альтернативные варианты'] },
+                { title: 'Техника приглашения в салон', duration_hours: 1.5, deadline_days: 2, content: ['Аргументы для приглашения', 'Запись на время', 'Подтверждение'] }
+            ]},
+            'active_listening': { name: 'Активное слушание', icon: '👂', modules: [
+                { title: 'Базовые техники', duration_hours: 2, deadline_days: 3, content: ['Эхо-техника', 'Уточняющие вопросы', 'Перефразирование'] },
+                { title: 'Эмпатия в продажах', duration_hours: 1.5, deadline_days: 3, content: ['Фразы эмпатии', 'Присоединение к эмоциям'] }
+            ]},
+            'closing_efficiency': { name: 'Завершение разговора', icon: '✅', modules: [
+                { title: 'Правильное прощание', duration_hours: 1, deadline_days: 2, content: ['Стандартные фразы', 'Благодарность', 'Пожелания'] },
+                { title: 'Договорённости о шагах', duration_hours: 1.5, deadline_days: 3, content: ['Фиксация в CRM', 'Отправка подтверждения'] }
+            ]}
+        };
+        return courses[areaId];
+    }
+    
+    function checkOverdue(startDate, deadlineDays) {
+        if (!startDate) return false;
+        const start = new Date(startDate);
+        const deadline = new Date(start);
+        deadline.setDate(deadline.getDate() + deadlineDays);
+        return new Date() > deadline;
+    }
+    
+    function getStatusText(status) {
+        const statusMap = {
+            'pending': '⏳ Ожидает',
+            'in_progress': '🔄 В процессе',
+            'completed': '✅ Завершено'
+        };
+        return statusMap[status] || '⏳ Ожидает';
+    }
+    
+    function formatDate(dateStr) {
+        if (!dateStr) return 'Не указана';
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('ru-RU');
+        } catch(e) {
+            return dateStr;
+        }
+    }
+    
+    function showNoCourseMessage() {
+        const container = document.getElementById('courseContent');
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px;">
+                <p style="font-size: 3rem;">📚</p>
+                <h3>Курс обучения не сформирован</h3>
+                <p>Загрузите и проанализируйте запись разговора, чтобы система автоматически создала для вас персональный план обучения.</p>
+                <a href="/" class="btn" style="background: #ff9800; margin-top: 20px; display: inline-block;">🎤 Загрузить запись</a>
+            </div>
+        `;
+    }
+    
+    function showMessage(message, type) {
+        const alertsContainer = document.getElementById('alertsContainer');
+        if (alertsContainer) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span>${message}</span>`;
+            alertsContainer.insertBefore(alertDiv, alertsContainer.firstChild);
+            setTimeout(() => alertDiv.remove(), 5000);
+        } else {
+            alert(message);
+        }
+    }
+    
+    function downloadCertificate() {
+        // Функция для скачивания сертификата
+        window.open(`/api/extended-course/${currentCourseKey}/certificate`, '_blank');
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    loadExtendedCourse();
+</script>
+{% endblock %}
