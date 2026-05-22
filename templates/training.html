@@ -1,0 +1,214 @@
+﻿{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .training-container {
+        background: rgba(19, 38, 52, 0.9);
+        border-radius: 30px;
+        padding: 25px;
+        margin-top: 20px;
+    }
+    
+    .plan-card {
+        background: linear-gradient(135deg, rgba(13, 28, 41, 0.8), rgba(13, 28, 41, 0.6));
+        border-radius: 20px;
+        padding: 20px;
+        margin-bottom: 25px;
+        border-left: 5px solid #ff9800;
+    }
+    
+    .week-card {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 15px;
+        padding: 15px;
+        margin: 15px 0;
+        transition: transform 0.3s;
+    }
+    
+    .week-card:hover {
+        transform: translateX(5px);
+    }
+    
+    .topic-item {
+        background: rgba(255, 152, 0, 0.1);
+        border-radius: 10px;
+        padding: 12px;
+        margin: 10px 0;
+    }
+    
+    .progress-circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+    }
+    
+    .status-pending { background: #f44336; color: white; }
+    .status-in_progress { background: #ff9800; color: white; }
+    .status-completed { background: #4caf50; color: white; }
+    
+    .exercise-item {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin: 5px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="training-container">
+    <h2 style="color: #ffcc80;">🎓 Персональные планы обучения</h2>
+    <p style="margin-bottom: 20px;">На основе анализа ваших разговоров система автоматически формирует план развития навыков.</p>
+    
+    <div id="trainingPlansList">
+        <div style="text-align: center; padding: 40px;">
+            <div class="loading-spinner"></div>
+            <p>Загрузка планов обучения...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentUserId = null;
+    
+    async function loadTrainingPlans() {
+        try {
+            const response = await fetch('/api/my-training-plan');
+            const data = await response.json();
+            
+            if (data.success && data.plans && data.plans.length > 0) {
+                displayTrainingPlans(data.plans);
+            } else {
+                document.getElementById('trainingPlansList').innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <p style="font-size: 3rem;">📚</p>
+                        <h3>Планы обучения не найдены</h3>
+                        <p>После прохождения анализа разговора система автоматически сформирует для вас персональный план обучения.</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('trainingPlansList').innerHTML = '<p style="color: #f44336;">Ошибка загрузки планов обучения</p>';
+        }
+    }
+    
+    function displayTrainingPlans(plans) {
+        const container = document.getElementById('trainingPlansList');
+        
+        container.innerHTML = plans.map(plan => `
+            <div class="plan-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
+                    <div>
+                        <h3 style="color: #ff9800;">📋 План обучения</h3>
+                        <div style="font-size: 0.85rem; color: #b0c7e0;">Создан: ${formatDate(plan.created_at)}</div>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: bold; color: #ff9800;">${plan.total_score}/100</div>
+                            <div style="font-size: 0.7rem;">Итоговый балл</div>
+                        </div>
+                        <button class="status-badge status-${plan.status || 'pending'}" onclick="exportPlan('${plan.id || 'plan'}')">
+                            📥 Экспорт плана
+                        </button>
+                    </div>
+                </div>
+                
+                ${plan.weeks.map(week => `
+                    <div class="week-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+                            <h4 style="color: ${week.color};">📅 ${week.title}</h4>
+                            <div style="display: flex; gap: 10px;">
+                                <span class="status-badge status-${week.status || 'pending'}">
+                                    ${getStatusText(week.status)}
+                                </span>
+                                <span style="background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 20px;">
+                                    ⏱️ ${week.total_hours} часов
+                                </span>
+                            </div>
+                        </div>
+                        
+                        ${week.topics.map(topic => `
+                            <div class="topic-item">
+                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                                    <strong>${escapeHtml(topic.criterion)}</strong>
+                                    <span style="color: #ff9800;">${topic.current_score}/100 → ${topic.target_score}/100</span>
+                                </div>
+                                <div class="progress-bar" style="margin: 10px 0;">
+                                    <div class="progress-fill" style="width: ${(topic.current_score / topic.target_score) * 100}%; background: ${week.color};"></div>
+                                </div>
+                                <div style="margin-top: 10px;">
+                                    <strong>📝 Упражнения:</strong>
+                                    ${topic.exercises ? topic.exercises.map(ex => `
+                                        <div class="exercise-item">
+                                            <input type="checkbox" class="checkbox" onchange="updateExerciseStatus(this, '${plan.id}', ${week.week}, '${escapeHtml(ex)}')">
+                                            <span>${escapeHtml(ex)}</span>
+                                        </div>
+                                    `).join('') : '<div class="exercise-item">Индивидуальная работа с наставником</div>'}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `).join('')}
+            </div>
+        `).join('');
+    }
+    
+    function formatDate(dateStr) {
+        if (!dateStr) return 'Неизвестно';
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('ru-RU');
+        } catch(e) {
+            return dateStr;
+        }
+    }
+    
+    function getStatusText(status) {
+        const statusMap = {
+            'pending': '⏳ Ожидает',
+            'in_progress': '🔄 В процессе',
+            'completed': '✅ Завершено'
+        };
+        return statusMap[status] || '⏳ Ожидает';
+    }
+    
+    function updateExerciseStatus(checkbox, planId, week, exercise) {
+        console.log(`Упражнение "${exercise}" ${checkbox.checked ? 'выполнено' : 'не выполнено'}`);
+        // Здесь можно отправить API запрос для сохранения прогресса
+    }
+    
+    function exportPlan(planId) {
+        window.open(`/api/training-plan/export/${planId}`, '_blank');
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    loadTrainingPlans();
+</script>
+{% endblock %}
