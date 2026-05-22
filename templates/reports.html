@@ -1,0 +1,119 @@
+﻿{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .reports-container {
+        background: rgba(19, 38, 52, 0.9);
+        border-radius: 30px;
+        padding: 25px;
+        margin-top: 20px;
+    }
+    
+    .report-card {
+        background: rgba(13, 28, 41, 0.6);
+        border-radius: 20px;
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: transform 0.3s;
+    }
+    
+    .report-card:hover {
+        transform: translateY(-3px);
+    }
+    
+    .report-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+        flex-wrap: wrap;
+    }
+    
+    .report-btn {
+        padding: 8px 20px;
+        border-radius: 25px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .report-btn.html { background: #2196f3; color: white; }
+    .report-btn.pdf { background: #f44336; color: white; }
+    .report-btn.excel { background: #4caf50; color: white; }
+    .report-btn.word { background: #1e88e5; color: white; }
+    
+    .report-btn:hover {
+        transform: translateY(-2px);
+        opacity: 0.9;
+    }
+    
+    .training-badge {
+        background: #ff9800;
+        color: #1a2a3a;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reports-container">
+    <h2 style="color: #ffcc80;">📊 Генерация отчётов</h2>
+    
+    <div id="analysesList">
+        <div style="text-align: center; padding: 40px;">
+            <div class="loading-spinner"></div>
+            <p>Загрузка анализов...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadAnalyses() {
+        try {
+            const response = await fetch('/api/recent-analyses');
+            const data = await response.json();
+            
+            if (data.success && data.analyses) {
+                const container = document.getElementById('analysesList');
+                container.innerHTML = data.analyses.map(analysis => `
+                    <div class="report-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                            <div>
+                                <strong>📁 ${escapeHtml(analysis.original_filename || analysis.file_id)}</strong>
+                                <div style="color: #ff9800; margin-top: 5px;">Балл: ${analysis.total_score}/100</div>
+                                <div style="font-size: 0.8rem; color: #b0c7e0;">${analysis.analysis_time || 'Дата неизвестна'}</div>
+                            </div>
+                            <div class="training-badge">🎓 Рекомендовано обучение</div>
+                        </div>
+                        <div class="report-buttons">
+                            <button class="report-btn html" onclick="generateReport('${analysis.file_id}', 'html')">🌐 HTML</button>
+                            <button class="report-btn pdf" onclick="generateReport('${analysis.file_id}', 'pdf')">📄 PDF</button>
+                            <button class="report-btn excel" onclick="generateReport('${analysis.file_id}', 'excel')">📊 Excel</button>
+                            <button class="report-btn word" onclick="generateReport('${analysis.file_id}', 'word')">📝 Word</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+    
+    function generateReport(fileId, format) {
+        window.open(`/api/reports/generate/${fileId}?format=${format}`, '_blank');
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    loadAnalyses();
+</script>
+{% endblock %}
