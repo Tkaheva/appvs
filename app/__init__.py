@@ -1,5 +1,5 @@
 ﻿import os
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
@@ -34,6 +34,6 @@ def create_app():
     
     @app.route('/health')
     def health():
-        return {'status': 'healthy', 'version': '3.0.0'}
+        return jsonify({'status': 'healthy', 'version': '3.0.0', 'service': 'VoiceGuard Analytics'})
     
     return app

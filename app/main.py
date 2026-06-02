@@ -1,16 +1,13 @@
-﻿# app/main.py - ПОЛНАЯ ВЕРСИЯ С МАРШРУТАМИ ДЛЯ ОТЧЁТОВ И ОБУЧЕНИЯ
-
-import os
+﻿import os
 import uuid
 import json
 import threading
 import datetime
 import pymysql
-from flask import Blueprint, request, jsonify, render_template, session, send_file, current_app, redirect, url_for
+from flask import Blueprint, request, jsonify, render_template, session, send_file, current_app, redirect, url_for, make_response
 from werkzeug.utils import secure_filename
 from app.audio_processor import AudioProcessor
 from app.analyzer import analyze_audio_result, CRITERIA
-from app.auth import login_required
 
 main_bp = Blueprint('main', __name__)
 audio_processor = AudioProcessor()
@@ -28,6 +25,12 @@ DB_CONFIG = {
     'charset': 'utf8mb4',
     'cursorclass': pymysql.cursors.DictCursor,
     'connect_timeout': 10
+}
+
+# Конфигурация Bitrix24
+BITRIX24_CONFIG = {
+    'webhook_url': os.environ.get('BITRIX24_WEBHOOK', ''),
+    'enabled': bool(os.environ.get('BITRIX24_ENABLED', False))
 }
 
 
@@ -62,6 +65,201 @@ def dashboard():
     if not session.get('user'):
         return redirect(url_for('auth.login'))
     return render_template('dashboard.html', user=session.get('user', {}))
+
+
+# ==================== API ДЛЯ ИНТЕГРАЦИИ С BITRIX24 ====================
+
+@main_bp.route('/api/bitrix24/sync', methods=['POST'])
+def sync_with_bitrix24():
+    """Синхронизация результатов анализа с Bitrix24"""
+    if not BITRIX24_CONFIG['enabled'] or not BITRIX24_CONFIG['webhook_url']:
+        return jsonify({'success': False, 'error': 'Bitrix24 integration not configured'}), 400
+    
+    data = request.get_json()
+    file_id = data.get('file_id')
+    analysis_result = data.get('analysis_result')
+    
+    if not file_id or not analysis_result:
+        return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+    
+    import requests
+    try:
+        # Создание задачи на обучение в Bitrix24
+        task_data = {
+            'fields': {
+                'TITLE': f'Анализ звонка {file_id[:8]}',
+                'DESCRIPTION': f"Общий балл: {analysis_result.get('total_score', 0)}/100\n"
+                               f"Оценка: {analysis_result.get('grade', '')}\n"
+                               f"Рекомендации: {analysis_result.get('recommendations', [])}",
+                'RESPONSIBLE_ID': 1,
+                'PRIORITY': 2
+            }
+        }
+        
+        response = requests.post(
+            f"{BITRIX24_CONFIG['webhook_url']}/tasks.task.add",
+            json=task_data,
+            timeout=10
+        )
+        
+        return jsonify({'success': True, 'bitrix24_response': response.json()})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ==================== ЭКСПОРТ ОТЧЁТОВ ====================
+
+@main_bp.route('/api/export/<file_id>/pdf')
+def export_pdf(file_id):
+    """Экспорт отчёта в PDF"""
+    result = analysis_results_store.get(file_id)
+    if not result:
+        return jsonify({'error': 'Analysis not found'}), 404
+    
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.units import mm
+        from io import BytesIO
+        
+        buffer = BytesIO()
+        c = canvas.Canvas(buffer, pagesize=A4)
+        width, height = A4
+        
+        # Заголовок
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(20, height - 40, "VoiceGuard Analytics - Отчёт об анализе звонка")
+        
+        c.setFont("Helvetica", 12)
+        c.drawString(20, height - 70, f"Общий балл: {result.get('total_score', 0)}/100")
+        c.drawString(20, height - 90, f"Оценка: {result.get('grade', '')}")
+        c.drawString(20, height - 110, f"Количество слов: {result.get('word_count', 0)}")
+        
+        c.save()
+        buffer.seek(0)
+        
+        response = make_response(buffer.getvalue())
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename=analysis_{file_id}.pdf'
+        return response
+    except ImportError:
+        # Если reportlab не установлен, возвращаем JSON
+        return jsonify({'success': False, 'error': 'PDF export requires reportlab'}), 500
+
+
+@main_bp.route('/api/export/<file_id>/excel')
+def export_excel(file_id):
+    """Экспорт отчёта в Excel"""
+    result = analysis_results_store.get(file_id)
+    if not result:
+        return jsonify({'error': 'Analysis not found'}), 404
+    
+    try:
+        import pandas as pd
+        from io import BytesIO
+        
+        # Подготовка данных
+        data = []
+        for criterion_id, score_data in result.get('criteria_scores', {}).items():
+            data.append({
+                'Критерий': criterion_id,
+                'Балл': score_data.get('score', 0),
+                'Найденные ключевые слова': ', '.join(score_data.get('found_keywords', []))
+            })
+        
+        df = pd.DataFrame(data)
+        
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Анализ', index=False)
+        
+        buffer.seek(0)
+        
+        response = make_response(buffer.getvalue())
+        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response.headers['Content-Disposition'] = f'attachment; filename=analysis_{file_id}.xlsx'
+        return response
+    except ImportError:
+        return jsonify({'success': False, 'error': 'Excel export requires pandas and openpyxl'}), 500
+
+
+# ==================== ДАШБОРД СТАТИСТИКА ====================
+
+@main_bp.route('/stats')
+def get_stats():
+    """API для получения статистики для дашборда"""
+    total_files = len(analysis_results_store)
+    completed = sum(1 for r in analysis_results_store.values() if r.get('success', False))
+    in_progress = total_files - completed
+    
+    avg_score = 0
+    if completed > 0:
+        scores = []
+        for r in analysis_results_store.values():
+            if r.get('success', False):
+                score = r.get('total_score', 0)
+                if score > 0:
+                    scores.append(score)
+        if scores:
+            avg_score = round(sum(scores) / len(scores))
+    
+    return jsonify({
+        'success': True,
+        'stats': {
+            'total_files': total_files,
+            'completed': completed,
+            'avg_score': avg_score,
+            'in_progress': in_progress
+        }
+    })
+
+
+@main_bp.route('/api/recent-analyses')
+def get_recent_analyses():
+    """API для получения последних анализов"""
+    recent = []
+    
+    # Пробуем получить из БД (основной источник)
+    conn = get_db_connection()
+    if conn:
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT ar.*, uf.original_filename
+                    FROM analysis_results ar
+                    LEFT JOIN uploaded_files uf ON ar.file_id = uf.file_id
+                    ORDER BY ar.analysis_time DESC
+                    LIMIT 10
+                """)
+                db_recent = cursor.fetchall()
+                for item in db_recent:
+                    recent.append({
+                        'file_id': item.get('file_id', ''),
+                        'total_score': item.get('total_score', 0),
+                        'grade': item.get('grade', ''),
+                        'analysis_time': str(item.get('analysis_time', '')),
+                        'word_count': item.get('word_count', 0),
+                        'original_filename': item.get('original_filename', '')
+                    })
+                print(f"✅ Загружено {len(recent)} анализов из БД")
+        except Exception as e:
+            print(f"❌ Ошибка получения анализов из БД: {e}")
+        finally:
+            conn.close()
+    
+    return jsonify({
+        'success': True,
+        'analyses': recent
+    })
+
+
+@main_bp.route('/criteria')
+def get_criteria():
+    """API для получения критериев оценки"""
+    return jsonify({
+        'success': True,
+        'criteria': CRITERIA
+    })
 
 
 @main_bp.route('/analysis-status/<file_id>')
@@ -196,6 +394,10 @@ def analyze_file(file_id):
             # Обновляем статус на "completed"
             update_file_status(file_id, 'completed')
             
+            # Синхронизация с Bitrix24 (если включена)
+            if BITRIX24_CONFIG['enabled'] and BITRIX24_CONFIG['webhook_url']:
+                sync_with_bitrix24_background(file_id, analysis_result)
+            
             if os.path.exists(file_path):
                 os.remove(file_path)
                 
@@ -211,6 +413,30 @@ def analyze_file(file_id):
     thread.start()
     
     return jsonify({'success': True, 'message': 'Анализ запущен', 'file_id': file_id})
+
+
+def sync_with_bitrix24_background(file_id, analysis_result):
+    """Фоновая синхронизация с Bitrix24"""
+    import requests
+    try:
+        webhook = BITRIX24_CONFIG['webhook_url']
+        recommendations = analysis_result.get('recommendations', [])
+        rec_text = '\n'.join([r['recommendation_text'] for r in recommendations[:3]])
+        
+        task_data = {
+            'fields': {
+                'TITLE': f'VoiceGuard: Анализ звонка {file_id[:8]}',
+                'DESCRIPTION': f"Общий балл: {analysis_result.get('total_score', 0)}/100\n"
+                               f"Оценка: {analysis_result.get('grade', '')}\n"
+                               f"Настроение: {analysis_result.get('sentiment_label', '')}\n\n"
+                               f"Рекомендации:\n{rec_text}",
+                'PRIORITY': 2
+            }
+        }
+        requests.post(f"{webhook}/tasks.task.add", json=task_data, timeout=5)
+        print(f"✅ Синхронизировано с Bitrix24: {file_id}")
+    except Exception as e:
+        print(f"⚠️ Ошибка синхронизации с Bitrix24: {e}")
 
 
 def update_file_status(file_id, status):
@@ -315,7 +541,7 @@ def init_database_tables(conn):
                     email VARCHAR(100) UNIQUE NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
                     full_name VARCHAR(100),
-                    role ENUM('admin', 'supervisor', 'manager') DEFAULT 'manager',
+                    role ENUM('admin', 'manager', 'analyst') DEFAULT 'analyst',
                     is_active BOOLEAN DEFAULT TRUE,
                     last_login TIMESTAMP NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -378,18 +604,9 @@ def init_database_tables(conn):
                 )
             """)
             
-            # Добавляем тестовых пользователей с разными ролями
             cursor.execute("""
-                INSERT IGNORE INTO users (id, username, email, password_hash, full_name, role) 
-                VALUES (1, 'admin', 'admin@autosalon.local', 'admin123', 'Администратор системы', 'admin')
-            """)
-            cursor.execute("""
-                INSERT IGNORE INTO users (id, username, email, password_hash, full_name, role) 
-                VALUES (2, 'supervisor', 'supervisor@autosalon.local', 'super123', 'Руководитель отдела продаж', 'supervisor')
-            """)
-            cursor.execute("""
-                INSERT IGNORE INTO users (id, username, email, password_hash, full_name, role) 
-                VALUES (3, 'manager', 'manager@autosalon.local', 'manager123', 'Менеджер по продажам', 'manager')
+                INSERT IGNORE INTO users (username, email, password_hash, full_name, role) 
+                VALUES ('admin', 'admin@autosalon.local', 'admin123', 'Администратор', 'admin')
             """)
             
             conn.commit()
@@ -399,17 +616,15 @@ def init_database_tables(conn):
         print(f"❌ Ошибка создания таблиц: {e}")
 
 
-# ==================== API ДЛЯ ПРОСМОТРА БАЗЫ ДАННЫХ ====================
+# ==================== DATABASE VIEW ====================
 
 @main_bp.route('/database-view')
-@login_required(roles=['admin', 'supervisor'])
 def database_view():
-    """Страница просмотра базы данных (только для admin и supervisor)"""
+    """Страница просмотра базы данных"""
     return render_template('database_view.html')
 
 
 @main_bp.route('/api/database/stats')
-@login_required(roles=['admin', 'supervisor'])
 def api_db_stats():
     """API для получения статистики"""
     conn = get_db_connection()
@@ -446,7 +661,6 @@ def api_db_stats():
 
 
 @main_bp.route('/api/database/files')
-@login_required(roles=['admin', 'supervisor'])
 def api_db_files():
     """API для получения списка файлов"""
     conn = get_db_connection()
@@ -474,7 +688,6 @@ def api_db_files():
 
 
 @main_bp.route('/api/database/analyses')
-@login_required(roles=['admin', 'supervisor'])
 def api_db_analyses():
     """API для получения списка анализов"""
     conn = get_db_connection()
@@ -504,7 +717,6 @@ def api_db_analyses():
 
 
 @main_bp.route('/api/database/criteria')
-@login_required(roles=['admin', 'supervisor'])
 def api_db_criteria():
     """API для получения оценок критериев"""
     conn = get_db_connection()
@@ -530,7 +742,6 @@ def api_db_criteria():
 
 
 @main_bp.route('/api/database/segments')
-@login_required(roles=['admin', 'supervisor'])
 def api_db_segments():
     """API для получения сегментов диалога"""
     conn = get_db_connection()
@@ -556,9 +767,8 @@ def api_db_segments():
 
 
 @main_bp.route('/api/database/users')
-@login_required(roles=['admin'])
 def api_db_users():
-    """API для получения списка пользователей (только admin)"""
+    """API для получения списка пользователей"""
     conn = get_db_connection()
     if not conn:
         return jsonify({'success': False, 'error': 'Не удалось подключиться к БД'})
@@ -593,9 +803,8 @@ def analysis_result_view(file_id):
 
 
 @main_bp.route('/analysis-details/<int:analysis_id>')
-@login_required(roles=['admin', 'supervisor'])
 def analysis_details_view(analysis_id):
-    """Страница деталей анализа по ID (только admin и supervisor)"""
+    """Страница деталей анализа по ID"""
     conn = get_db_connection()
     if not conn:
         return render_template('error.html', error='Не удалось подключиться к БД')
@@ -631,240 +840,3 @@ def analysis_details_view(analysis_id):
         return render_template('error.html', error=str(e))
     finally:
         conn.close()
-
-
-# ==================== СТАТИСТИКА ДЛЯ ДАШБОРДА ====================
-
-@main_bp.route('/stats')
-def get_stats():
-    """API для получения статистики для дашборда"""
-    total_files = len(analysis_results_store)
-    completed = sum(1 for r in analysis_results_store.values() if r.get('success', False))
-    in_progress = total_files - completed
-    
-    avg_score = 0
-    if completed > 0:
-        scores = []
-        for r in analysis_results_store.values():
-            if r.get('success', False):
-                score = r.get('total_score', 0)
-                if score > 0:
-                    scores.append(score)
-        if scores:
-            avg_score = round(sum(scores) / len(scores))
-    
-    return jsonify({
-        'success': True,
-        'stats': {
-            'total_files': total_files,
-            'completed': completed,
-            'avg_score': avg_score,
-            'in_progress': in_progress
-        }
-    })
-
-
-@main_bp.route('/api/recent-analyses')
-def get_recent_analyses():
-    """API для получения последних анализов"""
-    recent = []
-    
-    # Пробуем получить из БД (основной источник)
-    conn = get_db_connection()
-    if conn:
-        try:
-            with conn.cursor() as cursor:
-                cursor.execute("""
-                    SELECT ar.*, uf.original_filename
-                    FROM analysis_results ar
-                    LEFT JOIN uploaded_files uf ON ar.file_id = uf.file_id
-                    ORDER BY ar.analysis_time DESC
-                    LIMIT 10
-                """)
-                db_recent = cursor.fetchall()
-                for item in db_recent:
-                    recent.append({
-                        'file_id': item.get('file_id', ''),
-                        'total_score': item.get('total_score', 0),
-                        'grade': item.get('grade', ''),
-                        'analysis_time': str(item.get('analysis_time', '')),
-                        'word_count': item.get('word_count', 0),
-                        'original_filename': item.get('original_filename', '')
-                    })
-                print(f"✅ Загружено {len(recent)} анализов из БД")
-        except Exception as e:
-            print(f"❌ Ошибка получения анализов из БД: {e}")
-        finally:
-            conn.close()
-    
-    # Если в БД нет, пробуем получить из хранилища результатов
-    if not recent:
-        for file_id, result in list(analysis_results_store.items())[-10:]:
-            if result.get('success', False):
-                recent.append({
-                    'file_id': file_id,
-                    'total_score': result.get('total_score', 0),
-                    'grade': result.get('grade', ''),
-                    'analysis_time': result.get('analysis_time', ''),
-                    'word_count': result.get('word_count', 0)
-                })
-        print(f"✅ Загружено {len(recent)} анализов из хранилища")
-    
-    return jsonify({
-        'success': True,
-        'analyses': recent
-    })
-
-
-@main_bp.route('/criteria')
-def get_criteria():
-    """API для получения критериев оценки"""
-    return jsonify({
-        'success': True,
-        'criteria': CRITERIA
-    })
-
-
-# ==================== НОВЫЕ МАРШРУТЫ ДЛЯ ОТЧЁТОВ И ОБУЧЕНИЯ ====================
-
-@main_bp.route('/api/analysis/<file_id>/training-plan')
-@login_required(roles=['admin', 'supervisor', 'manager'])
-def get_analysis_training_plan(file_id):
-    """Получение плана обучения на основе анализа"""
-    from app.models import TrainingPlan
-    from app.reports import training_plans_store
-    
-    result = analysis_results_store.get(file_id)
-    if not result:
-        return jsonify({'error': 'Анализ не найден'}), 404
-    
-    user_id = session.get('user', {}).get('id')
-    if not user_id:
-        user_id = 1  # default для теста
-    
-    plan_key = f"plan_{user_id}_{file_id}"
-    
-    if plan_key not in training_plans_store:
-        training_plan = TrainingPlan().generate_from_analysis(result, user_id)
-        training_plans_store[plan_key] = training_plan.to_dict()
-    
-    return jsonify({
-        'success': True,
-        'training_plan': training_plans_store[plan_key]
-    })
-
-
-@main_bp.route('/reports')
-@login_required(roles=['admin', 'supervisor'])
-def reports_page():
-    """Страница отчётов (только для admin и supervisor)"""
-    return render_template('reports.html', user=session.get('user', {}))
-
-
-@main_bp.route('/training')
-@login_required(roles=['admin', 'supervisor', 'manager'])
-def training_page():
-    """Страница планов обучения (доступна всем авторизованным)"""
-    return render_template('training.html', user=session.get('user', {}))
-
-
-@main_bp.route('/api/users/list')
-@login_required(roles=['admin', 'supervisor'])
-def get_users_list():
-    """Получение списка пользователей (для назначения обучения)"""
-    from app.auth import USERS_DB
-    
-    current_user_role = session.get('user', {}).get('role', 'manager')
-    users = []
-    
-    for username, user_data in USERS_DB.items():
-        # Supervisor не видит admin
-        if current_user_role == 'supervisor' and user_data['role'] == 'admin':
-            continue
-        users.append({
-            'id': user_data['id'],
-            'username': user_data['username'],
-            'full_name': user_data['full_name'],
-            'role': user_data['role'],
-            'department': user_data.get('department', '')
-        })
-    
-    return jsonify({'success': True, 'users': users})
-
-
-@main_bp.route('/api/my-analyses')
-@login_required(roles=['admin', 'supervisor', 'manager'])
-def get_my_analyses():
-    """Получение анализов для текущего пользователя"""
-    user_role = session.get('user', {}).get('role', 'manager')
-    user_id = session.get('user', {}).get('id')
-    
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({'success': False, 'error': 'Нет соединения с БД'})
-    
-    try:
-        with conn.cursor() as cursor:
-            if user_role == 'admin':
-                # Admin видит всё
-                cursor.execute("""
-                    SELECT ar.*, uf.original_filename, uf.user_id
-                    FROM analysis_results ar
-                    LEFT JOIN uploaded_files uf ON ar.file_id = uf.file_id
-                    ORDER BY ar.analysis_time DESC
-                    LIMIT 50
-                """)
-            elif user_role == 'supervisor':
-                # Supervisor видит все анализы команды
-                cursor.execute("""
-                    SELECT ar.*, uf.original_filename, uf.user_id
-                    FROM analysis_results ar
-                    LEFT JOIN uploaded_files uf ON ar.file_id = uf.file_id
-                    ORDER BY ar.analysis_time DESC
-                    LIMIT 50
-                """)
-            else:
-                # Manager видит только свои анализы
-                cursor.execute("""
-                    SELECT ar.*, uf.original_filename, uf.user_id
-                    FROM analysis_results ar
-                    LEFT JOIN uploaded_files uf ON ar.file_id = uf.file_id
-                    WHERE uf.user_id = %s OR uf.user_id IS NULL
-                    ORDER BY ar.analysis_time DESC
-                    LIMIT 50
-                """, (user_id,))
-            
-            analyses = cursor.fetchall()
-            for analysis in analyses:
-                if analysis.get('analysis_time'):
-                    analysis['analysis_time'] = str(analysis['analysis_time'])
-            
-            return jsonify({'success': True, 'analyses': analyses})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-    finally:
-        conn.close()
-
-
-@main_bp.route('/download/<file_id>')
-@login_required(roles=['admin', 'supervisor', 'manager'])
-def download_report(file_id):
-    """Скачивание отчёта в HTML формате"""
-    result = analysis_results_store.get(file_id)
-    if not result:
-        return jsonify({'error': 'Результат не найден'}), 404
-    
-    from app.models import ReportGenerator
-    
-    user_info = session.get('user', {})
-    
-    # Получение плана обучения
-    from app.models import TrainingPlan
-    from app.reports import training_plans_store
-    
-    user_id = user_info.get('id', 1)
-    plan_key = f"plan_{user_id}_{file_id}"
-    training_plan = training_plans_store.get(plan_key)
-    
-    html = ReportGenerator.generate_html_report(result, user_info, training_plan)
-    return html
