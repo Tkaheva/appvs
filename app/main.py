@@ -18,7 +18,7 @@ ALLOWED_EXTENSIONS = {'mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'opus'}
 # Конфигурация базы данных
 DB_CONFIG = {
     'host': os.environ.get('DB_HOST', 'localhost'),
-    'port': int(os.environ.get('DB_PORT', 3308)),
+    'port': int(os.environ.get('DB_PORT', 3307)),
     'user': os.environ.get('DB_USER', 'root'),
     'password': os.environ.get('DB_PASSWORD', 'rootpassword'),
     'database': os.environ.get('DB_NAME', 'autosalon_analytics'),
