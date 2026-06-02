@@ -29,6 +29,7 @@ services:
       DB_USER: root
       DB_PASSWORD: rootpassword
       DB_NAME: autosalon_analytics
+      BITRIX24_ENABLED: "false"
     volumes:
       - ./uploads:/app/uploads
     depends_on:
