@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS analysis_results (
     admin_word_count INT DEFAULT 0,
     client_word_count INT DEFAULT 0,
     avg_confidence FLOAT,
+    sentiment_score INT DEFAULT 50,
     FOREIGN KEY (file_id) REFERENCES uploaded_files(file_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -71,6 +72,26 @@ CREATE TABLE IF NOT EXISTS dialogue_segments (
     FOREIGN KEY (analysis_id) REFERENCES analysis_results(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Вставка тестового администратора
+-- Таблица рекомендаций по обучению
+CREATE TABLE IF NOT EXISTS recommendations (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    analysis_id INT NOT NULL,
+    user_id INT,
+    criterion_id VARCHAR(50) NOT NULL,
+    recommendation_text TEXT NOT NULL,
+    priority ENUM('high', 'medium', 'low') DEFAULT 'medium',
+    is_viewed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (analysis_id) REFERENCES analysis_results(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Вставка тестовых пользователей
 INSERT IGNORE INTO users (username, email, password_hash, full_name, role) 
 VALUES ('admin', 'admin@autosalon.local', 'admin123', 'Администратор', 'admin');
+
+INSERT IGNORE INTO users (username, email, password_hash, full_name, role) 
+VALUES ('manager', 'manager@autosalon.local', 'manager123', 'Менеджер по продажам', 'manager');
+
+INSERT IGNORE INTO users (username, email, password_hash, full_name, role) 
+VALUES ('analyst', 'analyst@autosalon.local', 'analyst123', 'Аналитик', 'analyst');
